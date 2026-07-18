@@ -1,0 +1,17 @@
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from schemas.common import ErrorResponse
+
+
+async def http_error_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(status_code=exc.status_code, content=ErrorResponse(success=False, error=str(exc.detail)).model_dump())
+
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content=ErrorResponse(success=False, error="Validation Error", details=exc.errors()).model_dump())
+
+
+async def generic_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content=ErrorResponse(success=False, error="Internal Server Error").model_dump())
