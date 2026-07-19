@@ -1,0 +1,138 @@
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/App.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/App.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/app/AppProviders.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/app/AppProviders.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Container.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Container.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/ErrorBoundary.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/ErrorBoundary.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Loading.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Loading.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Logo.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Logo.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Page.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Page.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Section.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/components/common/Section.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/hooks/useDebounce.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/hooks/useDebounce.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/hooks/useLocalStorage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/hooks/useLocalStorage.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/hooks/useTheme.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/hooks/useTheme.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/layouts/AuthLayout.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/layouts/AuthLayout.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/layouts/DashboardLayout.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/layouts/DashboardLayout.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/layouts/PublicLayout.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/layouts/PublicLayout.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/main.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/main.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/AdminPage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/AdminPage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/DashboardPage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/DashboardPage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/EventsPage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/EventsPage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/HomePage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/HomePage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/LoginPage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/LoginPage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/NotFoundPage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/NotFoundPage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/ProfilePage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/pages/ProfilePage.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/routes/navigation.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/routes/navigation.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/routes/router.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/routes/router.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/routes/routes.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/routes/routes.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/services/api/axios.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/services/api/axios.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/services/query/queryClient.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/services/query/queryClient.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/theme/ThemeProvider.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/theme/ThemeProvider.tsx'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/theme/theme.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/theme/theme.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/types/api.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/types/api.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/types/auth.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/types/auth.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/types/common.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/types/common.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/cn.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/cn.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/constants.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/constants.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/date.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/date.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/env.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/env.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+error TS6305: Output file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/storage.d.ts' has not been built from source file 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/src/utils/storage.ts'.
+  The file is in the program because:
+    Matched by include pattern 'src' in 'tsconfig.json'
+tsconfig.json(25,18): error TS6306: Referenced project 'C:/Users/Sahil/Desktop/Pragyarambh26/frontend/tsconfig.node.json' must have setting "composite": true.
+Files:                         65
+Lines of Library:           50712
+Lines of Definitions:         499
+Lines of TypeScript:            0
+Lines of JavaScript:            0
+Lines of JSON:                  0
+Lines of Other:                 0
+Identifiers:                45736
+Symbols:                    30031
+Types:                         85
+Instantiations:                 0
+Memory used:               60287K
+Assignability cache size:       0
+Identity cache size:            0
+Subtype cache size:             0
+Strict subtype cache size:      0
+I/O Read time:              0.02s
+Parse time:                 0.17s
+ResolveTypeReference time:  0.00s
+ResolveModule time:         0.00s
+ResolveLibrary time:        0.02s
+Program time:               0.24s
+Bind time:                  0.06s
+printTime time:             0.00s
+Emit time:                  0.00s
+Total time:                 0.30s

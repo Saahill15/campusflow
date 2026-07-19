@@ -1,0 +1,67 @@
+export const theme = {
+  colors: {
+    primary: '#111827',
+    secondary: '#F8FAFC',
+    surface: '#FFFFFF',
+    shadow: '#8B95A1',
+    accentWarm: '#D97706',
+    accentCool: '#2563EB',
+    retroShade: '#9D4EDD',
+    success: '#16A34A',
+    warning: '#F59E0B',
+    error: '#DC2626',
+  },
+  typography: {
+    fontFamilyBase: 'Inter, system-ui, sans-serif',
+    fontFamilyAccent: 'Space Grotesk, system-ui, sans-serif',
+    fontSizes: {
+      display: '56px',
+      title: '32px',
+      section: '24px',
+      subsection: '18px',
+      bodyLarge: '16px',
+      body: '14px',
+      caption: '12px',
+    },
+    lineHeights: {
+      body: 1.5,
+      heading: 1.4,
+    },
+  },
+  spacing: {
+    xs: '4px',
+    sm: '8px',
+    md: '16px',
+    lg: '24px',
+    xl: '32px',
+    xxl: '40px',
+    '2xl': '48px',
+    '3xl': '64px',
+    '4xl': '80px',
+  },
+  radius: {
+    large: '16px',
+    medium: '12px',
+    input: '10px',
+    small: '8px',
+  },
+  shadow: {
+    surface: '0 10px 30px rgba(17, 24, 39, 0.08)',
+    card: '0 16px 48px rgba(17, 24, 39, 0.10)',
+    hover: '0 22px 64px rgba(17, 24, 39, 0.12)',
+  },
+  breakpoints: {
+    sm: '640px',
+    md: '768px',
+    lg: '1024px',
+    xl: '1280px',
+    '2xl': '1536px',
+  },
+  container: {
+    maxWidth: '1280px',
+  },
+  motion: {
+    duration: '250ms',
+    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+};
