@@ -14,9 +14,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "declaration": false,
-    "declarationMap": false,
-    "emitDeclarationOnly": false,
     "jsx": "react-jsx",
     "types": ["vite/client"],
     "baseUrl": "./",
@@ -25,6 +22,5 @@
     }
   },
   "include": ["src"],
-  "exclude": ["**/*.d.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["**/*.d.ts"]
 }

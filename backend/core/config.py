@@ -1,17 +1,19 @@
 import secrets
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = Field("CampusFlow", env="APP_NAME")
-    APP_VERSION: str = Field("0.0.0", env="APP_VERSION")
-    ENVIRONMENT: str = Field("development", env="ENVIRONMENT")
-    DATABASE_URL: str = Field("sqlite+aiosqlite:///:memory:", env="DATABASE_URL")
-    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32), env="SECRET_KEY")
+    model_config = SettingsConfigDict(env_file='.env')
 
-    class Config:
-        env_file = ".env"
+    APP_NAME: str = "CampusFlow"
+    APP_VERSION: str = "0.0.0"
+    ENVIRONMENT: str = "development"
+    DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+
+    # token lifetimes
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
 
 settings = Settings()

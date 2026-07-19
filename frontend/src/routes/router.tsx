@@ -1,38 +1,49 @@
-import React from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { AppRoutes } from './routes';
-import HomePage from '../pages/HomePage';
-import LoginPage from '../pages/LoginPage';
-import EventsPage from '../pages/EventsPage';
-import ProfilePage from '../pages/ProfilePage';
-import DashboardPage from '../pages/DashboardPage';
-import AdminPage from '../pages/AdminPage';
-import NotFoundPage from '../pages/NotFoundPage';
-import PublicLayout from '../layouts/PublicLayout';
-import AuthLayout from '../layouts/AuthLayout';
-import DashboardLayout from '../layouts/DashboardLayout';
+import React from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import PublicLayout from '../layouts/PublicLayout'
+import StudentLayout from '../layouts/StudentLayout'
+import AdminLayout from '../layouts/AdminLayout'
+import Landing from '../pages/Landing'
+import PragyarambhLanding from '../pages/pragyarambh/PragyarambhLanding'
+import Login from '../pages/Login'
+import StudentDashboard from '../pages/StudentDashboard'
+import AdminDashboard from '../pages/AdminDashboard'
+import CommitteeDashboard from '../pages/CommitteeDashboard'
+import Scanner from '../pages/Scanner'
+import NotFound from '../pages/NotFound'
+import Unauthorized from '../pages/Unauthorized'
+import PublicRoute from './PublicRoute'
+import RoleRoute from './RoleRoute'
 
-const Router = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route element={<PublicLayout />}>
-        <Route path={AppRoutes.HOME} element={<HomePage />} />
-        <Route path={AppRoutes.EVENTS} element={<EventsPage />} />
-        <Route path={AppRoutes.LOGIN} element={<LoginPage />} />
-      </Route>
+export default function Router() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/pragyarambh" element={<PragyarambhLanding />} />
 
-      <Route element={<AuthLayout />}>
-        <Route path={AppRoutes.PROFILE} element={<ProfilePage />} />
-      </Route>
+        <Route path="/" element={<PublicLayout />}>
+          <Route index element={<Landing />} />
+          <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
+        </Route>
 
-      <Route element={<DashboardLayout />}>
-        <Route path={AppRoutes.DASHBOARD} element={<DashboardPage />} />
-        <Route path={AppRoutes.ADMIN} element={<AdminPage />} />
-      </Route>
+        <Route path="/student" element={<RoleRoute roles={["student"]}><StudentLayout /></RoleRoute>}>
+          <Route path="dashboard" element={<StudentDashboard />} />
+        </Route>
 
-      <Route path={AppRoutes.NOT_FOUND} element={<NotFoundPage />} />
-    </Routes>
-  </BrowserRouter>
-);
+        <Route path="/admin" element={<RoleRoute roles={["admin"]}><AdminLayout /></RoleRoute>}>
+          <Route path="dashboard" element={<AdminDashboard />} />
+        </Route>
 
-export default Router;
+        <Route path="/committee" element={<RoleRoute roles={["committee"]}><AdminLayout /></RoleRoute>}>
+          <Route path="dashboard" element={<CommitteeDashboard />} />
+        </Route>
+
+        <Route path="/scanner" element={<RoleRoute roles={["committee","scanner"]}><Scanner /></RoleRoute>} />
+
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+

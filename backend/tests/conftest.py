@@ -22,6 +22,14 @@ if os.path.exists(db_file):
 
 # Ensure models are imported so tables are registered on Base.metadata
 import models.auth  # noqa: F401
+import models.domain  # noqa: F401
+import models.event  # noqa: F401
+import models.registration  # noqa: F401
+import models.pass_model  # noqa: F401
+import models.qr_code  # noqa: F401
+import models.gate  # noqa: F401
+import models.entry_log  # noqa: F401
+import models.event_settings  # noqa: F401
 
 sync_url = f'sqlite:///{db_file_posix}'
 sync_engine = create_engine(sync_url, echo=False)
