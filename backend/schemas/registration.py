@@ -1,11 +1,12 @@
+import re
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class RegistrationBase(BaseModel):
-    event_id: str
-    user_id: int
+    event_id: Optional[str] = None
+    user_id: Optional[int] = None
     registration_number: Optional[str] = None
     status: Optional[str] = None
     payment_status: Optional[str] = None
@@ -21,8 +22,38 @@ class RegistrationBase(BaseModel):
     notes: Optional[str] = None
 
 
-class RegistrationCreate(RegistrationBase):
-    pass
+class RegistrationCreate(BaseModel):
+    first_name: str = Field(..., min_length=1)
+    last_name: str = Field(..., min_length=1)
+    department: str = Field(..., min_length=1)
+    academic_year: str = Field(..., min_length=1)
+    roll_number: str = Field(..., min_length=1)
+    phone: str = Field(..., min_length=7)
+    email: str
+    gender: str = Field(..., min_length=1)
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        cleaned = value.replace(' ', '').replace('-', '')
+        if not cleaned.isdigit() or len(cleaned) < 7:
+            raise ValueError('Phone number must contain at least 7 digits')
+        return value
+
+    @field_validator('roll_number')
+    @classmethod
+    def validate_roll_number(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError('Roll number is required')
+        return value.strip()
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', normalized):
+            raise ValueError('Please enter a valid email address')
+        return normalized
 
 
 class RegistrationUpdate(BaseModel):
@@ -46,3 +77,11 @@ class RegistrationResponse(RegistrationBase):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class RegistrationSubmissionResponse(BaseModel):
+    registration_number: str
+    status: str
+    email: str
+    message: str
+    confirmation_email_sent: bool = True

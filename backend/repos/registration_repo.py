@@ -20,6 +20,20 @@ class RegistrationRepository:
         q = await self.session.execute(select(Registration).where(Registration.user_id == user_id, Registration.event_id == event_id))
         return q.scalars().first()
 
+    async def get_by_event_and_email(self, event_id: str, email: str, statuses: list[str] | None = None) -> Optional[Registration]:
+        query = select(Registration).where(Registration.event_id == event_id, Registration.email == email)
+        if statuses is not None:
+            query = query.where(Registration.status.in_(statuses))
+        q = await self.session.execute(query)
+        return q.scalars().first()
+
+    async def get_by_event_and_roll_number(self, event_id: str, roll_number: str, statuses: list[str] | None = None) -> Optional[Registration]:
+        query = select(Registration).where(Registration.event_id == event_id, Registration.roll_number == roll_number)
+        if statuses is not None:
+            query = query.where(Registration.status.in_(statuses))
+        q = await self.session.execute(query)
+        return q.scalars().first()
+
     async def list(self, limit: int = 100, offset: int = 0) -> List[Registration]:
         q = await self.session.execute(select(Registration).limit(limit).offset(offset))
         return q.scalars().all()

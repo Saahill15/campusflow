@@ -58,6 +58,9 @@ class EntryLog(Base):
 
     __table_args__ = (
         CheckConstraint("entry_status IN ('success','duplicate','revoked','expired','invalid','rejected')", name='ck_entry_logs_status'),
+        Index('ix_entry_logs_pass_id', 'pass_id'),
+        Index('ix_entry_logs_qr_code_id', 'qr_code_id'),
+        Index('ix_entry_logs_gate_id', 'gate_id'),
     )
 
     def __repr__(self) -> str:  # pragma: no cover - trivial

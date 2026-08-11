@@ -55,6 +55,7 @@ class QRCode(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('pending','active','revoked','expired')", name='ck_qrcodes_status'),
+        Index('ix_qrcodes_pass_id', 'pass_id'),
         Index('ix_qrcodes_qr_token', 'qr_token'),
     )
 

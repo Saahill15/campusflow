@@ -44,7 +44,16 @@ class Registration(Base):
     id: str = Column(String(36), primary_key=True, default=gen_uuid)
 
     event_id: str = Column(String(36), ForeignKey('events.id', ondelete='CASCADE'), nullable=False)
-    user_id: int = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    user_id: Optional[int] = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
+
+    first_name: Optional[str] = Column(String(150), nullable=True)
+    last_name: Optional[str] = Column(String(150), nullable=True)
+    department: Optional[str] = Column(String(150), nullable=True)
+    academic_year: Optional[str] = Column(String(100), nullable=True)
+    roll_number: Optional[str] = Column(String(100), nullable=True)
+    phone: Optional[str] = Column(String(50), nullable=True)
+    email: Optional[str] = Column(String(255), nullable=True)
+    gender: Optional[str] = Column(String(50), nullable=True)
 
     registration_number: Optional[str] = Column(String(100), unique=True, nullable=True)
 
@@ -75,7 +84,6 @@ class Registration(Base):
     approved_by_user = relationship('User', foreign_keys=[approved_by])
 
     __table_args__ = (
-        UniqueConstraint('event_id', 'user_id', name='uq_registration_event_user'),
         CheckConstraint(
             "status IN ('pending','approved','rejected','cancelled','checked_in')",
             name='ck_registrations_status',
@@ -84,6 +92,8 @@ class Registration(Base):
             "payment_status IN ('not_required','pending','verified','rejected')",
             name='ck_registrations_payment_status',
         ),
+        UniqueConstraint('event_id', 'user_id', name='uq_registration_event_user'),
+        Index('ix_registrations_event_id', 'event_id'),
         Index('ix_registrations_registration_number', 'registration_number'),
         Index('ix_registrations_status', 'status'),
     )

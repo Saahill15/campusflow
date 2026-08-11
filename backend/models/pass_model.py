@@ -74,6 +74,7 @@ class Pass(Base):
             "pass_type IN ('general','vip','committee','organizer','guest')",
             name='ck_passes_type',
         ),
+        Index('ix_passes_event_id', 'event_id'),
         Index('ix_passes_pass_number', 'pass_number'),
     )
 

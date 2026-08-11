@@ -24,3 +24,15 @@ ENV/
 .vscode/
 .idea/
 .DS_Store
+
+# Logs and temporary files
+logs/
+*.log
+*.tmp
+*.temp
+*.cache
+.pytest_cache/
+
+# Build outputs
+build/
+dist/

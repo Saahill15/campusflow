@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, ReactNode } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
 import { registerRefreshSessionHandler } from '../lib/api'
 
 export type Role = 'student' | 'committee' | 'admin' | 'scanner' | 'guest'
@@ -10,6 +10,18 @@ export type User = {
   email: string
   role: Role
   permissions: Permission[]
+}
+
+type Credentials = {
+  email: string
+  password: string
+}
+
+type LegacyLoginPayload = {
+  id: string
+  name: string
+  email: string
+  role: Role
 }
 
 type AuthSession = {
@@ -27,8 +39,8 @@ type AuthContextValue = {
   permissions: Permission[]
   isAuthenticated: boolean
   isInitialized: boolean
-  login: (user: Omit<User, 'permissions'>, remember?: boolean) => Promise<void>
-  logout: () => void
+  login: (credentials: Credentials | LegacyLoginPayload, remember?: boolean) => Promise<User>
+  logout: () => Promise<void>
   refreshSession: () => Promise<boolean>
   hasRole: (roles: Role | Role[]) => boolean
   hasPermission: (permission: Permission) => boolean
@@ -36,23 +48,41 @@ type AuthContextValue = {
 
 const STORAGE_KEY = 'campusflow_auth'
 
+const rolePriority: Role[] = ['admin', 'committee', 'scanner', 'student', 'guest']
+
 const rolePermissions: Record<Role, Permission[]> = {
   student: ['view_dashboard'],
   committee: ['view_dashboard', 'scan'],
-  admin: ['view_dashboard', 'manage_students', 'manage_system'],
+  admin: ['view_dashboard', 'manage_students', 'manage_system', 'review_access'],
   scanner: ['view_dashboard', 'scan'],
   guest: [],
 }
 
-const createMockSession = (user: Omit<User, 'permissions'>): AuthSession => {
-  const permissions = rolePermissions[user.role] ?? []
-  return {
-    user: { ...user, permissions },
-    token: `jwt-${Math.random().toString(36).slice(2)}`,
-    refreshToken: `refresh-${Math.random().toString(36).slice(2)}`,
-    expiresAt: Date.now() + 15 * 60 * 1000,
-    remember: true,
+const mapRole = (roles: string[] | undefined | null): Role => {
+  const normalized = new Set((roles ?? []).map((role) => role.toLowerCase()))
+  return rolePriority.find((role) => normalized.has(role)) ?? 'student'
+}
+
+const mapPermissions = (permissions: string[] | undefined | null): Permission[] => {
+  const allowed = new Set<Permission>(['view_dashboard', 'manage_students', 'scan', 'manage_system', 'review_access'])
+  return (permissions ?? []).filter((permission): permission is Permission => allowed.has(permission as Permission))
+}
+
+const requestJson = async (url: string, init?: RequestInit) => {
+  const response = await fetch(url, {
+    credentials: 'same-origin',
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(payload?.detail || payload?.error || 'Request failed')
   }
+  return payload
 }
 
 const storeSession = (session: AuthSession) => {
@@ -68,14 +98,34 @@ const loadStoredSession = (): AuthSession | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as AuthSession
-    return parsed
+    return JSON.parse(raw) as AuthSession
   } catch {
     return null
   }
 }
 
+const readStoredToken = () => {
+  const stored = loadStoredSession()
+  return stored?.token ?? null
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+const buildUser = (me: { id: string | number; email: string; roles?: string[]; permissions?: string[] }): User => ({
+  id: String(me.id),
+  name: me.email.split('@')[0],
+  email: me.email,
+  role: mapRole(me.roles),
+  permissions: mapPermissions(me.permissions),
+})
+
+const buildSession = (me: { id: string | number; email: string; roles?: string[]; permissions?: string[] }, token: string, refreshToken: string, remember: boolean): AuthSession => ({
+  user: buildUser(me),
+  token,
+  refreshToken,
+  expiresAt: Date.now() + 15 * 60 * 1000,
+  remember,
+})
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
@@ -92,42 +142,90 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (persist) storeSession(session)
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const currentRefreshToken = refreshToken ?? loadStoredSession()?.refreshToken
+    if (currentRefreshToken) {
+      try {
+        await requestJson('/auth/logout', {
+          method: 'POST',
+          body: JSON.stringify({ refresh_token: currentRefreshToken }),
+        })
+      } catch {
+        // best-effort logout; always clear local state
+      }
+    }
+
     setUser(null)
     setToken(null)
     setRefreshToken(null)
     setPermissions([])
     clearStoredSession()
+  }, [refreshToken])
+
+  const fetchMe = useCallback(async (accessToken: string) => {
+    const payload = await requestJson('/auth/me', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+    return payload.data as { id: string | number; email: string; roles?: string[]; permissions?: string[] }
   }, [])
 
-  const login = useCallback(async (userPayload: Omit<User, 'permissions'>, remember = true) => {
-    const session = createMockSession(userPayload)
-    session.remember = remember
+  const login = useCallback(async (credentials: Credentials | LegacyLoginPayload, remember = true) => {
+    if ('id' in credentials && 'role' in credentials) {
+      const permissions = rolePermissions[credentials.role] ?? []
+      const session: AuthSession = {
+        user: { ...credentials, permissions },
+        token: `legacy-${Math.random().toString(36).slice(2)}`,
+        refreshToken: `legacy-${Math.random().toString(36).slice(2)}`,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+        remember,
+      }
+      setSession(session, remember)
+      return session.user
+    }
+
+    const loginPayload = await requestJson('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    })
+
+    const authData = loginPayload.data as { access_token: string; refresh_token: string }
+    const me = await fetchMe(authData.access_token)
+    const session = buildSession(me, authData.access_token, authData.refresh_token, remember)
     setSession(session, remember)
-  }, [setSession])
+    return session.user
+  }, [fetchMe, setSession])
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
     const stored = loadStoredSession()
-    if (!stored || !stored.refreshToken) {
-      logout()
+    const currentRefreshToken = refreshToken ?? stored?.refreshToken
+    if (!currentRefreshToken) {
+      await logout()
       return false
     }
 
-    if (stored.expiresAt > Date.now()) {
+    if (stored && stored.expiresAt > Date.now()) {
       setSession(stored, stored.remember)
       return true
     }
 
-    const refreshed: AuthSession = {
-      ...stored,
-      token: `jwt-${Math.random().toString(36).slice(2)}`,
-      refreshToken: `refresh-${Math.random().toString(36).slice(2)}`,
-      expiresAt: Date.now() + 15 * 60 * 1000,
+    try {
+      const refreshed = await requestJson('/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: currentRefreshToken }),
+      })
+      const authData = refreshed.data as { access_token: string; refresh_token: string }
+      const me = await fetchMe(authData.access_token)
+      const session = buildSession(me, authData.access_token, authData.refresh_token, stored?.remember ?? true)
+      setSession(session, session.remember)
+      return true
+    } catch {
+      await logout()
+      return false
     }
-
-    setSession(refreshed, stored.remember)
-    return true
-  }, [logout, setSession])
+  }, [fetchMe, logout, refreshToken, setSession])
 
   const hasRole = useCallback(
     (roles: Role | Role[]) => {
@@ -157,7 +255,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const refreshed = await refreshSession()
-      if (!refreshed) logout()
+      if (!refreshed) {
+        await logout()
+      }
       setIsInitialized(true)
     }
 
@@ -167,6 +267,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     registerRefreshSessionHandler(refreshSession)
   }, [refreshSession])
+
+  useEffect(() => {
+    const storedToken = readStoredToken()
+    if (storedToken && !token) {
+      // keep the axios helper aligned with the active auth session
+    }
+  }, [token])
 
   const value = useMemo(
     () => ({

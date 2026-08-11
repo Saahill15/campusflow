@@ -38,6 +38,15 @@ Base.metadata.create_all(bind=sync_engine)
 from app.main import app
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def reset_database():
+    Base.metadata.drop_all(bind=sync_engine)
+    Base.metadata.create_all(bind=sync_engine)
+    yield
+    Base.metadata.drop_all(bind=sync_engine)
+    Base.metadata.create_all(bind=sync_engine)
+
+
 @pytest_asyncio.fixture
 async def client() -> AsyncClient:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

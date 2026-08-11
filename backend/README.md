@@ -26,3 +26,22 @@ This folder contains the FastAPI backend for Pragyarambh '26.
 - `pyproject.toml` — backend dependencies and packaging
 - `alembic.ini` — Alembic configuration
 - `.env.example` — environment variable reference
+
+## Production migration
+
+- Run database migrations in production with:
+  `alembic -c alembic.ini upgrade head`
+
+## Email configuration
+
+For confirmation emails, configure these environment variables in local development and production:
+
+- `MAIL_HOST`
+- `MAIL_PORT`
+- `MAIL_USERNAME`
+- `MAIL_PASSWORD`
+- `MAIL_FROM`
+- `MAIL_FROM_NAME`
+- `MAIL_USE_TLS`
+
+If these are not set, the backend falls back to console logging for email delivery in development and tests.

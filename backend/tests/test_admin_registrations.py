@@ -1,0 +1,573 @@
+from datetime import datetime, timezone
+
+import pytest
+from sqlalchemy import select
+
+from app.main import app
+from db.session import get_session
+from models.auth import Role, User
+from models.event import Event
+from models.pass_model import Pass, PassStatus
+from models.qr_code import QRCode, QRStatus
+from models.registration import Registration
+from services import registration_service
+from services.auth_service import hash_password
+from services.email_service import get_email_service
+
+
+class MockEmailService:
+    def __init__(self, should_fail: bool = False, enabled: bool = True):
+        self.should_fail = should_fail
+        self.enabled = enabled
+        self.calls = []
+
+    async def send_email(self, to: str, subject: str, body: str, attachments=None) -> None:
+        self.calls.append({'to': to, 'subject': subject, 'body': body, 'attachments': attachments, 'enabled': self.enabled})
+        if not self.enabled:
+            return
+        if self.should_fail:
+            raise RuntimeError('smtp unavailable')
+
+
+@pytest.fixture
+def email_service_override():
+    service = MockEmailService()
+    app.dependency_overrides[get_email_service] = lambda: service
+    yield service
+    app.dependency_overrides.pop(get_email_service, None)
+
+
+async def _ensure_role(session, name: str) -> Role:
+    result = await session.execute(select(Role).where(Role.name == name))
+    role = result.scalars().first()
+    if role:
+        return role
+    role = Role(name=name)
+    session.add(role)
+    await session.flush()
+    return role
+
+
+async def _create_user_with_role(session, email: str, password: str, role_name: str) -> User:
+    role = await _ensure_role(session, role_name)
+    user = User(email=email, hashed_password=hash_password(password), is_active=True, is_verified=True)
+    user.roles.append(role)
+    session.add(user)
+    await session.flush()
+    return user
+
+
+async def _create_registration(session, registration_number: str, email: str, status: str = 'pending') -> Registration:
+    event = Event(
+        title='Admin Test Event',
+        slug=f'admin-test-{registration_number.lower()}',
+        start_datetime=datetime(2026, 8, 12, 10, 0, tzinfo=timezone.utc),
+        end_datetime=datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc),
+    )
+    session.add(event)
+    await session.flush()
+
+    registration = Registration(
+        event_id=event.id,
+        user_id=None,
+        first_name='Asha',
+        last_name='Rai',
+        department='Cybersecurity and Digital Forensics',
+        academic_year='First Year',
+        roll_number='FCS26001',
+        phone='9876543210',
+        email=email,
+        gender='Female',
+        registration_number=registration_number,
+        status=status,
+    )
+    session.add(registration)
+    await session.flush()
+    return registration
+
+
+async def _create_pass_and_qr(session, registration: Registration):
+    p = Pass(
+        event_id=registration.event_id,
+        registration_id=registration.id,
+        pass_number='PG26-P-000010',
+        status=PassStatus.Issued,
+        issued_at=datetime.now(timezone.utc),
+    )
+    session.add(p)
+    await session.flush()
+
+    q = QRCode(
+        pass_id=p.id,
+        qr_token='TESTQR-0001',
+        status=QRStatus.Active,
+        generated_at=datetime.now(timezone.utc),
+    )
+    session.add(q)
+    await session.flush()
+    return p, q
+
+
+@pytest.mark.asyncio
+async def test_admin_login_succeeds_with_valid_credentials(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin@example.com', 'StrongPass123', 'admin')
+        await session.commit()
+
+    response = await client.post('/auth/login', json={'email': 'admin@example.com', 'password': 'StrongPass123'})
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert 'access_token' in data
+    assert 'refresh_token' in data
+
+    me_response = await client.get('/auth/me', headers={'Authorization': f"Bearer {data['access_token']}"})
+    assert me_response.status_code == 200
+    me_data = me_response.json()['data']
+    assert 'admin' in me_data['roles']
+
+
+@pytest.mark.asyncio
+async def test_invalid_admin_login_fails(client):
+    response = await client.post('/auth/login', json={'email': 'missing@example.com', 'password': 'WrongPass123'})
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_admin_registrations_access_control(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'student@example.com', 'StrongPass123', 'student')
+        await _create_user_with_role(session, 'admin2@example.com', 'StrongPass123', 'admin')
+        await _create_registration(session, 'PG26-000001', 'student.one@example.com')
+        await session.commit()
+
+    unauthenticated = await client.get('/api/v1/admin/registrations')
+    assert unauthenticated.status_code == 401
+
+    student_login = await client.post('/auth/login', json={'email': 'student@example.com', 'password': 'StrongPass123'})
+    student_token = student_login.json()['data']['access_token']
+    forbidden = await client.get('/api/v1/admin/registrations', headers={'Authorization': f'Bearer {student_token}'})
+    assert forbidden.status_code == 403
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin2@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    allowed = await client.get('/api/v1/admin/registrations', headers={'Authorization': f'Bearer {admin_token}'})
+    assert allowed.status_code == 200
+    payload = allowed.json()
+    assert payload['meta']['total'] == 1
+    item = payload['items'][0]
+    assert item['registration_number'] == 'PG26-000001'
+    assert item['first_name'] == 'Asha'
+    assert item['last_name'] == 'Rai'
+    assert item['department'] == 'Cybersecurity and Digital Forensics'
+    assert item['academic_year'] == 'First Year'
+    assert item['roll_number'] == 'FCS26001'
+    assert item['phone'] == '9876543210'
+    assert item['email'] == 'student.one@example.com'
+    assert item['gender'] == 'Female'
+    assert item['status'] == 'pending'
+    assert 'hashed_password' not in item
+    assert 'token' not in item
+
+
+@pytest.mark.asyncio
+async def test_admin_registration_detail_returns_full_fields(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin3@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000002', 'student.two@example.com', status='approved')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin3@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    detail = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {admin_token}'})
+    assert detail.status_code == 200
+    data = detail.json()
+    assert data['registration_number'] == 'PG26-000002'
+    assert data['status'] == 'approved'
+    assert data['first_name'] == 'Asha'
+    assert data['last_name'] == 'Rai'
+    assert data['department'] == 'Cybersecurity and Digital Forensics'
+    assert data['academic_year'] == 'First Year'
+    assert data['roll_number'] == 'FCS26001'
+    assert data['phone'] == '9876543210'
+    assert data['email'] == 'student.two@example.com'
+    assert data['gender'] == 'Female'
+
+
+@pytest.mark.asyncio
+async def test_admin_can_approve_pending_registration(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin4@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000003', 'student.three@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin4@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(f'/api/v1/admin/registrations/{registration.id}/approve', headers={'Authorization': f'Bearer {admin_token}'})
+    assert response.status_code == 200
+    data = response.json()
+    assert data['registration_number'] == 'PG26-000003'
+    assert data['status'] == 'approved'
+    assert data['approved_at'] is not None
+
+    detail = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {admin_token}'})
+    assert detail.status_code == 200
+    detail_data = detail.json()
+    assert detail_data['status'] == 'approved'
+    assert detail_data['approved_at'] is not None
+    assert detail_data['rejected_reason'] is None
+
+
+@pytest.mark.asyncio
+async def test_admin_approval_sends_notification_email(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin11@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000013', 'student.approve@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin11@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/approve',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['notification_email_sent'] is True
+    assert data['message'] is None
+    assert len(email_service_override.calls) == 1
+    assert email_service_override.calls[0]['to'] == 'student.approve@example.com'
+    assert 'Registration Approved' in email_service_override.calls[0]['body']
+    assert registration.registration_number in email_service_override.calls[0]['body']
+    assert 'Pass Number:' in email_service_override.calls[0]['body']
+    assert 'QR Token' not in email_service_override.calls[0]['body']
+    assert email_service_override.calls[0]['attachments'] is not None
+    assert len(email_service_override.calls[0]['attachments']) == 1
+    filename, content, content_type = email_service_override.calls[0]['attachments'][0]
+    assert filename.endswith('.png')
+    assert content_type == 'image/png'
+    assert isinstance(content, (bytes, bytearray))
+
+
+@pytest.mark.asyncio
+async def test_admin_approval_succeeds_when_email_disabled(client):
+    disabled_service = MockEmailService(enabled=False)
+    app.dependency_overrides[get_email_service] = lambda: disabled_service
+
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin13@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000015', 'student.disabled@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin13@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/approve',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['notification_email_sent'] is False
+    assert 'disabled' in data['message'].lower()
+    assert len(disabled_service.calls) == 0
+
+    app.dependency_overrides.pop(get_email_service, None)
+
+
+@pytest.mark.asyncio
+async def test_admin_rejection_succeeds_when_email_disabled(client):
+    disabled_service = MockEmailService(enabled=False)
+    app.dependency_overrides[get_email_service] = lambda: disabled_service
+
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin14@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000016', 'student.disabled2@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin14@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': 'Not eligible'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['notification_email_sent'] is False
+    assert 'disabled' in data['message'].lower()
+    assert len(disabled_service.calls) == 0
+
+    app.dependency_overrides.pop(get_email_service, None)
+
+
+@pytest.mark.asyncio
+async def test_admin_already_approved_does_not_send_second_email(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin15@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000017', 'student.repeatapprove@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin15@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+
+    first = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/approve',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert first.status_code == 200
+
+    second = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/approve',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert second.status_code == 400
+    assert len(email_service_override.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_already_rejected_does_not_send_second_email(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin16@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000018', 'student.repeatreject@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin16@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+
+    first = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': 'Incomplete details'},
+    )
+    assert first.status_code == 200
+
+    second = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': 'Still incomplete'},
+    )
+    assert second.status_code == 400
+    assert len(email_service_override.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_approval_pass_qr_failure_does_not_send_email(client):
+    failing_service = MockEmailService(enabled=True)
+    app.dependency_overrides[get_email_service] = lambda: failing_service
+
+    import uuid
+    from unittest.mock import patch
+
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin17@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000019', 'student.failqr@example.com', status='pending')
+        await session.commit()
+
+    # Insert an existing QR token collision to force failure in approve_registration
+    async with get_session() as session:
+        existing_registration = await _create_registration(session, 'PG26-000020', 'student.existing@example.com', status='approved')
+        existing_pass = Pass(event_id=existing_registration.event_id, registration_id=existing_registration.id, pass_number='PG26-P-000100', status=PassStatus.Issued)
+        session.add(existing_pass)
+        await session.flush()
+        existing_qr = QRCode(pass_id=existing_pass.id, qr_token='00000000-0000-0000-0000-000000000000', status=QRStatus.Active)
+        session.add(existing_qr)
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin17@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+
+    with patch.object(registration_service.uuid, 'uuid4', return_value=uuid.UUID('00000000-0000-0000-0000-000000000000')):
+        response = await client.post(
+            f'/api/v1/admin/registrations/{registration.id}/approve',
+            headers={'Authorization': f'Bearer {admin_token}'},
+        )
+
+    assert response.status_code == 400
+    assert len(failing_service.calls) == 0
+
+    async with get_session() as session:
+        result = await session.execute(select(Registration).where(Registration.id == registration.id))
+        actual = result.scalars().first()
+    assert actual is not None
+    assert actual.status == 'pending'
+
+    app.dependency_overrides.pop(get_email_service, None)
+
+
+@pytest.mark.asyncio
+async def test_admin_rejection_sends_notification_email(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin12@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000014', 'student.reject@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin12@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': 'Does not meet requirements'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['notification_email_sent'] is True
+    assert data['message'] is None
+    assert len(email_service_override.calls) == 1
+    assert email_service_override.calls[0]['to'] == 'student.reject@example.com'
+    assert 'Registration Rejected' in email_service_override.calls[0]['body']
+    assert 'Does not meet requirements' in email_service_override.calls[0]['body']
+
+
+@pytest.mark.asyncio
+async def test_admin_can_get_registration_pass_with_qr(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'adminpass@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000011', 'student.pass@example.com', status='approved')
+        p, q = await _create_pass_and_qr(session, registration)
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'adminpass@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.get(
+        f'/api/v1/admin/registrations/{registration.id}/pass',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['id'] == p.id
+    assert data['pass_number'] == p.pass_number
+    assert data['status'] == 'issued'
+    assert data['qr']['qr_token'] == q.qr_token
+
+
+@pytest.mark.asyncio
+async def test_admin_get_registration_pass_returns_404_when_pass_missing(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'adminpass2@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000012', 'student.nopass@example.com', status='approved')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'adminpass2@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.get(
+        f'/api/v1/admin/registrations/{registration.id}/pass',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_can_reject_pending_registration(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin5@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000004', 'student.four@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin5@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': 'Invalid registration details'},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data['registration_number'] == 'PG26-000004'
+    assert data['status'] == 'rejected'
+    assert data['rejected_reason'] == 'Invalid registration details'
+
+    detail = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {admin_token}'})
+    assert detail.status_code == 200
+    detail_data = detail.json()
+    assert detail_data['status'] == 'rejected'
+    assert detail_data['rejected_reason'] == 'Invalid registration details'
+    assert detail_data['approved_by'] is None
+    assert detail_data['approved_at'] is None
+
+
+@pytest.mark.asyncio
+async def test_rejection_requires_a_reason(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin6@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000005', 'student.five@example.com', status='pending')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin6@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': ''},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_normal_user_cannot_approve_or_reject(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'student2@example.com', 'StrongPass123', 'student')
+        await _create_user_with_role(session, 'admin7@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000006', 'student.six@example.com', status='pending')
+        await session.commit()
+
+    student_login = await client.post('/auth/login', json={'email': 'student2@example.com', 'password': 'StrongPass123'})
+    student_token = student_login.json()['data']['access_token']
+    approve_forbidden = await client.post(f'/api/v1/admin/registrations/{registration.id}/approve', headers={'Authorization': f'Bearer {student_token}'})
+    reject_forbidden = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {student_token}'},
+        json={'reason': 'Not authorized'},
+    )
+    assert approve_forbidden.status_code == 403
+    assert reject_forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_user_cannot_approve_or_reject(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin8@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000007', 'student.seven@example.com', status='pending')
+        await session.commit()
+
+    unauthenticated_approve = await client.post(f'/api/v1/admin/registrations/{registration.id}/approve')
+    unauthenticated_reject = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        json={'reason': 'No auth'},
+    )
+    assert unauthenticated_approve.status_code == 401
+    assert unauthenticated_reject.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_cannot_reject_approved_registration(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin9@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000008', 'student.eight@example.com', status='approved')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin9@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/reject',
+        headers={'Authorization': f'Bearer {admin_token}'},
+        json={'reason': 'Too late'},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_cannot_approve_rejected_registration(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'admin10@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000009', 'student.nine@example.com', status='rejected')
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'admin10@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(f'/api/v1/admin/registrations/{registration.id}/approve', headers={'Authorization': f'Bearer {admin_token}'})
+    assert response.status_code == 400

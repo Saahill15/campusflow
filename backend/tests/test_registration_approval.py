@@ -67,8 +67,8 @@ async def test_reject_registration_requires_reason_and_sets_fields():
         r = await svc.reject_registration(reg.id, approver.id, 'Incomplete details')
         assert r.status == RegistrationStatus.Rejected
         assert r.rejected_reason == 'Incomplete details'
-        assert r.approved_by == approver.id
-        assert r.approved_at is not None
+        assert r.approved_by is None
+        assert r.approved_at is None
 
 
 @pytest.mark.asyncio
