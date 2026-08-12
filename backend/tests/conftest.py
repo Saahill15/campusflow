@@ -12,6 +12,8 @@ import pathlib
 db_file = os.path.abspath('./test_auth.db')
 db_file_posix = pathlib.Path(db_file).as_posix()
 os.environ.setdefault('DATABASE_URL', f'sqlite+aiosqlite:///{db_file_posix}')
+# Ensure test ASGI host is trusted by TrustedHostMiddleware
+os.environ['TRUSTED_HOSTS'] = 'test'
 
 # create tables for tests using sync engine on the same absolute file path
 from sqlalchemy import create_engine

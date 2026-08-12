@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     Text,
     ForeignKey,
+    Index,
     CheckConstraint,
     func,
 )
