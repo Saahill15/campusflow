@@ -15,6 +15,8 @@ if os.path.exists(db_path):
         pass
 
 cfg = Config(os.path.join(os.path.dirname(__file__), '..', 'alembic.ini'))
+# Ensure alembic script_location is absolute (tests run from repo root)
+cfg.set_main_option('script_location', os.path.abspath(os.path.join(here, '..', 'alembic')))
 try:
     command.upgrade(cfg, 'head')
     print('Alembic upgrade head completed')
