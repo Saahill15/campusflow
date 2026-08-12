@@ -80,8 +80,29 @@ class RegistrationService:
             gender=(payload.get('gender') or '').strip(),
             status=RegistrationStatus.Pending,
         )
-        reg.registration_number = await self.generate_registration_number()
-        return await self.create(reg)
+
+        max_retries = 5
+        for attempt in range(max_retries):
+            reg.registration_number = await self.generate_registration_number()
+            try:
+                return await self.create(reg)
+            except IntegrityError as exc:
+                orig = getattr(exc, 'orig', None)
+                message = str(orig).lower() if orig is not None else str(exc).lower()
+                pgcode = getattr(orig, 'pgcode', None)
+                retry_on_registration_number_conflict = (
+                    pgcode == '23505'
+                    and 'registration_number' in message
+                ) or (
+                    'registration_number' in message
+                    and ('unique constraint' in message or 'unique failed' in message or 'duplicate' in message)
+                )
+                if retry_on_registration_number_conflict:
+                    await self.session.rollback()
+                    if attempt == max_retries - 1:
+                        raise
+                    continue
+                raise
 
     async def update(self, reg: Registration) -> Registration:
         r = await self.repo.update(reg)
