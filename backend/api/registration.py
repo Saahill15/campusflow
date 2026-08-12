@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
@@ -11,9 +11,6 @@ from models.event import Event, EventStatus
 from schemas.registration import RegistrationCreate, RegistrationSubmissionResponse
 from services.email_service import build_registration_confirmation_email, get_email_service
 from services.registration_service import RegistrationService
-from models.registration import Registration
-from services.registration_number import RegistrationNumberGenerator
-from fastapi.responses import JSONResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,83 +41,10 @@ async def create_registration(
     payload: RegistrationCreate,
     db: AsyncSession = Depends(get_db),
     email_service=Depends(get_email_service),
-    request: Request | None = None,
 ):
     service = RegistrationService(db)
     event = await get_or_create_pragyarambh_event(db)
-
-    # Optional diagnostics when caller supplies header: X-REG-DIAG: true
-    diag_mode = False
-    if request is not None:
-        try:
-            diag_mode = bool(request.headers.get('X-REG-DIAG'))
-        except Exception:
-            diag_mode = False
-
-    async def _log_diag(**kwargs):
-        if not diag_mode:
-            return
-        parts = ['[REG DEBUG]']
-        for k, v in kwargs.items():
-            parts.append(f"{k}={v}")
-        logger.info(' '.join(parts))
-
     try:
-        normalized_email = (payload.model_dump().get('email') or '').strip().lower()
-        normalized_roll = (payload.model_dump().get('roll_number') or '').strip().upper()
-        if diag_mode:
-            incoming_email_present = bool(normalized_email)
-            incoming_roll_present = bool(normalized_roll)
-
-            def _mask_email(e: str) -> str:
-                if not e:
-                    return ''
-                parts = e.split('@')
-                local = parts[0]
-                domain = parts[1] if len(parts) > 1 else ''
-                return (local[:3] + '...' if len(local) > 3 else local) + ('@' + domain if domain else '')
-
-            def _mask_roll(r: str) -> str:
-                if not r:
-                    return ''
-                return (r[:3] + '...' if len(r) > 3 else r)
-
-            masked_email = _mask_email(normalized_email)
-            masked_roll = _mask_roll(normalized_roll)
-
-            email_dup_count = 0
-            roll_dup_count = 0
-            try:
-                if normalized_email:
-                    q = await db.execute(
-                        select(func.count()).select_from(Registration.__table__).where(
-                            Registration.__table__.c.event_id == event.id,
-                            func.lower(func.trim(Registration.__table__.c.email)) == normalized_email,
-                        )
-                    )
-                    email_dup_count = int(q.scalar() or 0)
-                if normalized_roll:
-                    q2 = await db.execute(
-                        select(func.count()).select_from(Registration.__table__).where(
-                            Registration.__table__.c.event_id == event.id,
-                            func.upper(func.trim(Registration.__table__.c.roll_number)) == normalized_roll,
-                        )
-                    )
-                    roll_dup_count = int(q2.scalar() or 0)
-            except Exception:
-                logger.exception('REG DEBUG: error computing duplicate counts')
-
-            await _log_diag(
-                event_slug=event.slug,
-                event_id=event.id,
-                incoming_email_present=incoming_email_present,
-                incoming_email_normalized=masked_email,
-                incoming_roll_present=incoming_roll_present,
-                incoming_roll_normalized=masked_roll,
-                email_duplicate_count=email_dup_count,
-                roll_duplicate_count=roll_dup_count,
-            )
-
         registration = await service.create_registration(payload.model_dump(), event.id)
     except ValueError as exc:
         detail = str(exc)
