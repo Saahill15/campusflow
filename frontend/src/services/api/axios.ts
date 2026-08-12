@@ -1,7 +1,10 @@
 import axios from 'axios';
 import { getEnv } from '../../utils/env';
 
-const baseURL = getEnv('VITE_API_BASE_URL') || '';
+const baseApiUrl = getEnv('VITE_API_BASE_URL');
+const baseURL = baseApiUrl
+  ? `${baseApiUrl.replace(/\/$/, '')}/api/v1`
+  : '/api/v1';
 
 const api = axios.create({
   baseURL,
