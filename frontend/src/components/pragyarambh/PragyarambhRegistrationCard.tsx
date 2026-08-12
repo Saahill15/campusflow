@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
+import api from '../../services/api/axios'
 
 export default function PragyarambhRegistrationCard() {
   const [firstName, setFirstName] = useState('')
@@ -63,7 +64,7 @@ export default function PragyarambhRegistrationCard() {
     setIsSubmitting(true)
 
     try {
-      const response = await axios.post('/api/v1/registration', {
+      const response = await api.post('/registration', {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         department: department.trim(),
