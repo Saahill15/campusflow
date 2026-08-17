@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.core.config import settings
+from api import registration as registration_api
 from db.session import get_session
 from models.event import Event, EventStatus
 from models.registration import Registration, RegistrationStatus
@@ -22,14 +23,16 @@ async def test_registration_diagnostic_requires_token_and_reports_duplicate_coun
         )
         session.add(event)
         await session.flush()
-        session.add(Registration(
+        registration = Registration(
             event_id=event.id,
             first_name='Diagnostic',
             last_name='Record',
             email='deploy-test-001@example.com',
             roll_number='DEPLOY001',
+            registration_number='PG26-000001',
             status=RegistrationStatus.Pending,
-        ))
+        )
+        session.add(registration)
         await session.commit()
 
     denied = await client.get('/api/v1/registration/diagnostic')
@@ -58,3 +61,17 @@ async def test_registration_diagnostic_requires_token_and_reports_duplicate_coun
     assert matching_registration['entry_log_count'] == 0
     assert matching_registration['safe_to_delete'] is True
     assert 'phone' not in matching_registration
+
+    monkeypatch.setattr(registration_api, '_TEST_REGISTRATION_ID', registration.id)
+    deleted = await client.delete(
+        '/api/v1/registration/diagnostic/test-registration',
+        headers={'X-Diagnostic-Token': 'diagnostic-test-token'},
+    )
+    assert deleted.status_code == 200
+    assert deleted.json() == {
+        'deletion_succeeded': True,
+        'deleted_registration_id': registration.id,
+        'target_registration_count': 0,
+        'remaining_registrations_count': 0,
+        'other_data_changed': False,
+    }

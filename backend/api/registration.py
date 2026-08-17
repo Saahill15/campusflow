@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 _DEPLOY_COMMIT_PATTERN = re.compile(r'^[0-9a-f]{7,64}$', re.IGNORECASE)
 _DIAGNOSTIC_EMAIL = 'deploy-test-001@example.com'
 _DIAGNOSTIC_ROLL_NUMBER = 'DEPLOY001'
+_TEST_REGISTRATION_ID = '8d32e54a-a801-423f-9eeb-05bf4dca17ea'
+_TEST_REGISTRATION_NUMBER = 'PG26-000001'
 _DUPLICATE_STATUSES = [
     RegistrationStatus.Pending,
     RegistrationStatus.Approved,
@@ -69,6 +71,34 @@ def _mask_roll_number(value: str | None) -> str | None:
     if not value:
         return value
     return f'{value[:2]}***'
+
+
+async def _dependency_counts(db: AsyncSession, registration_id: str) -> tuple[int, int, int]:
+    params = {'registration_id': registration_id}
+    pass_count = (await db.execute(
+        text('SELECT COUNT(*) FROM passes WHERE registration_id = :registration_id'),
+        params,
+    )).scalar_one()
+    qrcode_count = (await db.execute(text('''
+        SELECT COUNT(*)
+        FROM qrcodes AS q
+        JOIN passes AS p ON p.id = q.pass_id
+        WHERE p.registration_id = :registration_id
+    '''), params)).scalar_one()
+    entry_log_count = (await db.execute(text('''
+        SELECT COUNT(*)
+        FROM entry_logs AS entry_log
+        WHERE entry_log.pass_id IN (
+            SELECT id FROM passes WHERE registration_id = :registration_id
+        )
+        OR entry_log.qr_code_id IN (
+            SELECT q.id
+            FROM qrcodes AS q
+            JOIN passes AS p ON p.id = q.pass_id
+            WHERE p.registration_id = :registration_id
+        )
+    '''), params)).scalar_one()
+    return pass_count, qrcode_count, entry_log_count
 
 
 @router.get('/registration/diagnostic')
@@ -163,30 +193,7 @@ async def registration_diagnostic(
             'matching_registrations': [],
         })
         for registration in matching_registrations:
-            params = {'registration_id': registration.id}
-            pass_count = (await db.execute(
-                text('SELECT COUNT(*) FROM passes WHERE registration_id = :registration_id'),
-                params,
-            )).scalar_one()
-            qrcode_count = (await db.execute(text('''
-                SELECT COUNT(*)
-                FROM qrcodes AS q
-                JOIN passes AS p ON p.id = q.pass_id
-                WHERE p.registration_id = :registration_id
-            '''), params)).scalar_one()
-            entry_log_count = (await db.execute(text('''
-                SELECT COUNT(*)
-                FROM entry_logs AS entry_log
-                WHERE entry_log.pass_id IN (
-                    SELECT id FROM passes WHERE registration_id = :registration_id
-                )
-                OR entry_log.qr_code_id IN (
-                    SELECT q.id
-                    FROM qrcodes AS q
-                    JOIN passes AS p ON p.id = q.pass_id
-                    WHERE p.registration_id = :registration_id
-                )
-            '''), params)).scalar_one()
+            pass_count, qrcode_count, entry_log_count = await _dependency_counts(db, registration.id)
             event_diagnostics[-1]['matching_registrations'].append({
                 'registration_id': registration.id,
                 'event_id': registration.event_id,
@@ -217,6 +224,52 @@ async def registration_diagnostic(
     if settings.RENDER_GIT_COMMIT and _DEPLOY_COMMIT_PATTERN.fullmatch(settings.RENDER_GIT_COMMIT):
         response['deployed_commit'] = settings.RENDER_GIT_COMMIT
     return response
+
+
+@router.delete('/registration/diagnostic/test-registration')
+async def delete_known_test_registration(
+    _: None = Depends(_require_diagnostic_token),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Delete only the explicitly authorized production Swagger test registration."""
+    row = (await db.execute(text('''
+        SELECT id, registration_number
+        FROM registrations
+        WHERE id = :registration_id
+    '''), {'registration_id': _TEST_REGISTRATION_ID})).mappings().one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Target registration not found')
+    if row['registration_number'] != _TEST_REGISTRATION_NUMBER:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Target registration verification failed')
+
+    pass_count, qrcode_count, entry_log_count = await _dependency_counts(db, _TEST_REGISTRATION_ID)
+    if pass_count or qrcode_count or entry_log_count:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Target registration has dependent records')
+
+    result = await db.execute(text('''
+        DELETE FROM registrations
+        WHERE id = :registration_id
+          AND registration_number = :registration_number
+    '''), {
+        'registration_id': _TEST_REGISTRATION_ID,
+        'registration_number': _TEST_REGISTRATION_NUMBER,
+    })
+    if result.rowcount != 1:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Target registration delete verification failed')
+    await db.commit()
+
+    target_registration_count = (await db.execute(text('''
+        SELECT COUNT(*) FROM registrations WHERE id = :registration_id
+    '''), {'registration_id': _TEST_REGISTRATION_ID})).scalar_one()
+    remaining_registrations_count = (await db.execute(text('SELECT COUNT(*) FROM registrations'))).scalar_one()
+    return {
+        'deletion_succeeded': target_registration_count == 0,
+        'deleted_registration_id': _TEST_REGISTRATION_ID,
+        'target_registration_count': target_registration_count,
+        'remaining_registrations_count': remaining_registrations_count,
+        'other_data_changed': False,
+    }
 
 
 @router.post('/registration', response_model=RegistrationSubmissionResponse)
