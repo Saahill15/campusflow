@@ -48,5 +48,9 @@ async def test_registration_diagnostic_requires_token_and_reports_duplicate_coun
     assert data['events'][0]['registration_count'] == 1
     assert data['events'][0]['email_duplicate_count'] == 1
     assert data['events'][0]['roll_duplicate_count'] == 1
-    assert 'email' not in data['events'][0]
-    assert 'roll_number' not in data['events'][0]
+    matching_registration = data['events'][0]['matching_registrations'][0]
+    assert matching_registration['email'] == 'de***@example.com'
+    assert matching_registration['roll_number'] == 'DE***'
+    assert matching_registration['status'] == 'pending'
+    assert matching_registration['payment_status'] == 'not_required'
+    assert 'phone' not in matching_registration

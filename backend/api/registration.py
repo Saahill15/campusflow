@@ -56,6 +56,21 @@ def _require_diagnostic_token(x_diagnostic_token: str | None = Header(default=No
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not found')
 
 
+def _mask_email(value: str | None) -> str | None:
+    if not value:
+        return value
+    local, separator, domain = value.partition('@')
+    if not separator:
+        return '***'
+    return f"{local[:2]}***@{domain}"
+
+
+def _mask_roll_number(value: str | None) -> str | None:
+    if not value:
+        return value
+    return f'{value[:2]}***'
+
+
 @router.get('/registration/diagnostic')
 async def registration_diagnostic(
     _: None = Depends(_require_diagnostic_token),
@@ -125,6 +140,15 @@ async def registration_diagnostic(
                 )
             )
         ).scalar_one()
+        matching_registrations = (
+            await db.execute(
+                select(Registration).where(
+                    Registration.event_id == event.id,
+                    Registration.email == normalized_email,
+                    Registration.roll_number == normalized_roll,
+                ).order_by(Registration.created_at, Registration.id)
+            )
+        ).scalars().all()
         duplicate_email = duplicate_email or email_duplicate_count > 0
         duplicate_roll = duplicate_roll or roll_duplicate_count > 0
         event_diagnostics.append({
@@ -136,6 +160,20 @@ async def registration_diagnostic(
             'roll_duplicate_count': roll_duplicate_count,
             'normalized_email_duplicate_count': normalized_email_duplicate_count,
             'normalized_roll_duplicate_count': normalized_roll_duplicate_count,
+            'matching_registrations': [
+                {
+                    'registration_id': registration.id,
+                    'event_id': registration.event_id,
+                    'registration_number': registration.registration_number,
+                    'email': _mask_email(registration.email),
+                    'roll_number': _mask_roll_number(registration.roll_number),
+                    'status': registration.status,
+                    'payment_status': registration.payment_status,
+                    'created_at': registration.created_at,
+                    'updated_at': registration.updated_at,
+                }
+                for registration in matching_registrations
+            ],
         })
 
     response = {
