@@ -3,7 +3,7 @@ import re
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
@@ -12,9 +12,6 @@ from app.core.config import settings
 from dependencies.database import get_db
 import models.domain  # noqa: F401 - ensure related mappers are registered before Event queries
 from models.event import Event, EventStatus
-from models.entry_log import EntryLog
-from models.pass_model import Pass
-from models.qr_code import QRCode
 from models.registration import Registration, RegistrationStatus
 from schemas.registration import RegistrationCreate, RegistrationSubmissionResponse
 from services.email_service import build_registration_confirmation_email, get_email_service
@@ -166,21 +163,30 @@ async def registration_diagnostic(
             'matching_registrations': [],
         })
         for registration in matching_registrations:
-            pass_ids = select(Pass.id).where(Pass.registration_id == registration.id)
-            qr_code_ids = select(QRCode.id).where(QRCode.pass_id.in_(pass_ids))
-            pass_count = (
-                await db.execute(select(func.count()).select_from(Pass).where(Pass.registration_id == registration.id))
-            ).scalar_one()
-            qrcode_count = (
-                await db.execute(select(func.count()).select_from(QRCode).where(QRCode.pass_id.in_(pass_ids)))
-            ).scalar_one()
-            entry_log_count = (
-                await db.execute(
-                    select(func.count()).select_from(EntryLog).where(
-                        or_(EntryLog.pass_id.in_(pass_ids), EntryLog.qr_code_id.in_(qr_code_ids))
-                    )
+            params = {'registration_id': registration.id}
+            pass_count = (await db.execute(
+                text('SELECT COUNT(*) FROM passes WHERE registration_id = :registration_id'),
+                params,
+            )).scalar_one()
+            qrcode_count = (await db.execute(text('''
+                SELECT COUNT(*)
+                FROM qrcodes AS q
+                JOIN passes AS p ON p.id = q.pass_id
+                WHERE p.registration_id = :registration_id
+            '''), params)).scalar_one()
+            entry_log_count = (await db.execute(text('''
+                SELECT COUNT(*)
+                FROM entry_logs AS entry_log
+                WHERE entry_log.pass_id IN (
+                    SELECT id FROM passes WHERE registration_id = :registration_id
                 )
-            ).scalar_one()
+                OR entry_log.qr_code_id IN (
+                    SELECT q.id
+                    FROM qrcodes AS q
+                    JOIN passes AS p ON p.id = q.pass_id
+                    WHERE p.registration_id = :registration_id
+                )
+            '''), params)).scalar_one()
             event_diagnostics[-1]['matching_registrations'].append({
                 'registration_id': registration.id,
                 'event_id': registration.event_id,
