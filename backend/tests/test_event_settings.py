@@ -1,3 +1,4 @@
+import os
 import pytest
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
@@ -6,6 +7,17 @@ from db.session import get_session
 from models.event_settings import EventSettings
 from models.event import Event
 from models.auth import User
+
+
+@pytest.mark.asyncio
+async def test_health_uses_runtime_settings(client):
+    resp = await client.get('/health/')
+    assert resp.status_code == 200
+    payload = resp.json()
+    expected_environment = os.environ.get('ENVIRONMENT', 'development')
+    expected_version = os.environ.get('APP_VERSION', '1.0.0')
+    assert payload['environment'] == expected_environment
+    assert payload['version'] == expected_version
 
 
 @pytest.mark.asyncio

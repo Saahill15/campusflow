@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from core.config import settings
+from app.core.config import settings
 from core.logging import setup_logging
 from api.health import router as health_router
 from api.registration import router as registration_router
