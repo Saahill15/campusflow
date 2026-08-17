@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: pragyarambh-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: python -m alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pragyarambh-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: TRUSTED_HOSTS
+        value: api.pragyarambh.tech,pragyarambh-api.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://www.pragyarambh.tech,https://pragyarambh.tech
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        value: hello@pragyarambh.tech
+      - key: MAIL_FROM_NAME
+        value: Pragyarambh 2026
+      - key: MAIL_USE_TLS
+        value: "true"
+
+staticSites:
+  - name: pragyarambh-frontend
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://api.pragyarambh.tech
+
+databases:
+  - name: pragyarambh-db
+    databaseName: pragyarambh
+    user: pragyarambh
+    region: singapore
+    plan: starter

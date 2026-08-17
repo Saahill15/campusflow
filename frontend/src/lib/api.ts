@@ -1,13 +1,17 @@
 import axios from 'axios'
+import { getEnv } from '../utils/env'
 
 let refreshHandler: (() => Promise<boolean>) | null = null
+
+const baseApiUrl = getEnv('VITE_API_BASE_URL')
+const baseURL = baseApiUrl ? `${baseApiUrl.replace(/\/$/, '')}/api/v1` : '/api/v1'
 
 export const registerRefreshSessionHandler = (handler: () => Promise<boolean>) => {
   refreshHandler = handler
 }
 
 export const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15_000,
 })
