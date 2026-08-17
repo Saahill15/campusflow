@@ -3,7 +3,7 @@ import re
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
@@ -12,6 +12,9 @@ from app.core.config import settings
 from dependencies.database import get_db
 import models.domain  # noqa: F401 - ensure related mappers are registered before Event queries
 from models.event import Event, EventStatus
+from models.entry_log import EntryLog
+from models.pass_model import Pass
+from models.qr_code import QRCode
 from models.registration import Registration, RegistrationStatus
 from schemas.registration import RegistrationCreate, RegistrationSubmissionResponse
 from services.email_service import build_registration_confirmation_email, get_email_service
@@ -160,21 +163,39 @@ async def registration_diagnostic(
             'roll_duplicate_count': roll_duplicate_count,
             'normalized_email_duplicate_count': normalized_email_duplicate_count,
             'normalized_roll_duplicate_count': normalized_roll_duplicate_count,
-            'matching_registrations': [
-                {
-                    'registration_id': registration.id,
-                    'event_id': registration.event_id,
-                    'registration_number': registration.registration_number,
-                    'email': _mask_email(registration.email),
-                    'roll_number': _mask_roll_number(registration.roll_number),
-                    'status': registration.status,
-                    'payment_status': registration.payment_status,
-                    'created_at': registration.created_at,
-                    'updated_at': registration.updated_at,
-                }
-                for registration in matching_registrations
-            ],
+            'matching_registrations': [],
         })
+        for registration in matching_registrations:
+            pass_ids = select(Pass.id).where(Pass.registration_id == registration.id)
+            qr_code_ids = select(QRCode.id).where(QRCode.pass_id.in_(pass_ids))
+            pass_count = (
+                await db.execute(select(func.count()).select_from(Pass).where(Pass.registration_id == registration.id))
+            ).scalar_one()
+            qrcode_count = (
+                await db.execute(select(func.count()).select_from(QRCode).where(QRCode.pass_id.in_(pass_ids)))
+            ).scalar_one()
+            entry_log_count = (
+                await db.execute(
+                    select(func.count()).select_from(EntryLog).where(
+                        or_(EntryLog.pass_id.in_(pass_ids), EntryLog.qr_code_id.in_(qr_code_ids))
+                    )
+                )
+            ).scalar_one()
+            event_diagnostics[-1]['matching_registrations'].append({
+                'registration_id': registration.id,
+                'event_id': registration.event_id,
+                'registration_number': registration.registration_number,
+                'email': _mask_email(registration.email),
+                'roll_number': _mask_roll_number(registration.roll_number),
+                'status': registration.status,
+                'payment_status': registration.payment_status,
+                'created_at': registration.created_at,
+                'updated_at': registration.updated_at,
+                'pass_count': pass_count,
+                'qrcode_count': qrcode_count,
+                'entry_log_count': entry_log_count,
+                'safe_to_delete': pass_count == 0 and qrcode_count == 0 and entry_log_count == 0,
+            })
 
     response = {
         'database_connected': True,

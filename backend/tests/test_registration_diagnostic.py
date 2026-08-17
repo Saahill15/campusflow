@@ -53,4 +53,8 @@ async def test_registration_diagnostic_requires_token_and_reports_duplicate_coun
     assert matching_registration['roll_number'] == 'DE***'
     assert matching_registration['status'] == 'pending'
     assert matching_registration['payment_status'] == 'not_required'
+    assert matching_registration['pass_count'] == 0
+    assert matching_registration['qrcode_count'] == 0
+    assert matching_registration['entry_log_count'] == 0
+    assert matching_registration['safe_to_delete'] is True
     assert 'phone' not in matching_registration
