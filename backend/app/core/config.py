@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     TRUSTED_HOSTS: str | None = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    REGISTRATION_DIAGNOSTIC_TOKEN: str | None = None
+    RENDER_GIT_COMMIT: str | None = None
 
     @property
     def cors_allowed_origins(self) -> list[str]:
