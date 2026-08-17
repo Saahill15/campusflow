@@ -300,7 +300,7 @@ async def create_registration(
         except Exception:
             confirmation_email_sent = False
             response_message = 'Registration submitted successfully. Confirmation email could not be delivered at the moment.'
-            logger.exception('Registration confirmation email delivery failed for %s', registration.email)
+            logger.exception('Registration confirmation email delivery failed')
     else:
         response_message = 'Registration submitted successfully. Email notifications are disabled.'
 

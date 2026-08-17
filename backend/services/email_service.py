@@ -59,6 +59,51 @@ class SMTPEmailService(EmailService):
         self.from_name = from_name
         self.use_tls = use_tls
 
+    @staticmethod
+    def _mask_address(value: str | None) -> str:
+        if not value:
+            return 'not_configured'
+        local, separator, domain = value.partition('@')
+        if not separator:
+            return '***'
+        return f'{local[:2]}***@{domain}'
+
+    def _safe_error_message(self, exc: Exception) -> str:
+        message = str(exc)
+        if self.password:
+            message = message.replace(self.password, '***')
+        if self.username:
+            message = message.replace(self.username, self._mask_address(self.username))
+        if self.from_email:
+            message = message.replace(self.from_email, self._mask_address(self.from_email))
+        return message
+
+    def _log_smtp_failure(self, stage: str, exc: Exception) -> None:
+        logger.error(
+            'SMTP diagnostic: stage=%s host=%s port=%s username=%s from_address=%s '
+            'error_type=%s error_code=%s error_message=%s',
+            stage,
+            self.host,
+            self.port,
+            self._mask_address(self.username),
+            self._mask_address(self.from_email),
+            type(exc).__name__,
+            getattr(exc, 'smtp_code', None),
+            self._safe_error_message(exc),
+        )
+
+    def _log_smtp_success(self, stage: str, **details: str) -> None:
+        detail_string = ' '.join(f'{key}={value}' for key, value in details.items())
+        logger.info(
+            'SMTP diagnostic: stage=%s result=success host=%s port=%s username=%s from_address=%s %s',
+            stage,
+            self.host,
+            self.port,
+            self._mask_address(self.username),
+            self._mask_address(self.from_email),
+            detail_string,
+        )
+
     def _build_message(self, to: str, subject: str, body: str, attachments: list[EmailAttachment] | None = None) -> EmailMessage:
         message = EmailMessage()
         message["To"] = to
@@ -78,25 +123,80 @@ class SMTPEmailService(EmailService):
 
     def _send_message(self, message: EmailMessage) -> None:
         context = ssl.create_default_context()
-        if self.port == 465:
-            with smtplib.SMTP_SSL(self.host, self.port, context=context, timeout=20) as server:
-                server.ehlo()
-                if self.username and self.password:
-                    server.login(self.username, self.password)
-                server.send_message(message)
-        else:
-            with smtplib.SMTP(self.host, self.port, timeout=20) as server:
-                server.ehlo()
-                if self.use_tls:
-                    server.starttls(context=context)
+        server: smtplib.SMTP | smtplib.SMTP_SSL | None = None
+        operation_failed = False
+        tls_mode = 'implicit_ssl' if self.port == 465 else ('starttls' if self.use_tls else 'disabled')
+        self._log_smtp_success('configuration', tls_mode=tls_mode)
+        try:
+            if self.port == 465:
+                try:
+                    server = smtplib.SMTP_SSL(self.host, self.port, context=context, timeout=20)
+                except Exception as exc:
+                    self._log_smtp_failure('TLS/SSL', exc)
+                    raise
+                try:
                     server.ehlo()
-                if self.username and self.password:
+                except Exception as exc:
+                    self._log_smtp_failure('TLS/SSL', exc)
+                    raise
+                self._log_smtp_success('connection', tls_mode=tls_mode)
+            else:
+                try:
+                    server = smtplib.SMTP(self.host, self.port, timeout=20)
+                except Exception as exc:
+                    self._log_smtp_failure('connection', exc)
+                    raise
+                try:
+                    server.ehlo()
+                except Exception as exc:
+                    self._log_smtp_failure('connection', exc)
+                    raise
+                self._log_smtp_success('connection', tls_mode=tls_mode)
+                if self.use_tls:
+                    try:
+                        server.starttls(context=context)
+                        server.ehlo()
+                    except Exception as exc:
+                        self._log_smtp_failure('TLS/SSL', exc)
+                        raise
+                    self._log_smtp_success('TLS/SSL', tls_mode=tls_mode)
+            if self.username and self.password:
+                try:
                     server.login(self.username, self.password)
+                except Exception as exc:
+                    self._log_smtp_failure('authentication', exc)
+                    raise
+                self._log_smtp_success('authentication')
+            else:
+                logger.info('SMTP diagnostic: stage=authentication result=skipped host=%s port=%s', self.host, self.port)
+            try:
                 server.send_message(message)
+            except Exception as exc:
+                self._log_smtp_failure('sendmail', exc)
+                raise
+            self._log_smtp_success('sendmail')
+        except Exception:
+            operation_failed = True
+            raise
+        finally:
+            if server is not None:
+                try:
+                    server.quit()
+                except Exception as exc:
+                    self._log_smtp_failure('quit', exc)
+                    if not operation_failed:
+                        raise
+                else:
+                    self._log_smtp_success('quit')
 
     async def send_email(self, to: str, subject: str, body: str, attachments: list[EmailAttachment] | None = None) -> None:
         message = self._build_message(to, subject, body, attachments=attachments)
-        await asyncio.to_thread(self._send_message, message)
+        try:
+            await asyncio.to_thread(self._send_message, message)
+        except Exception as exc:
+            self._log_smtp_failure('delivery', exc)
+            raise
+        self._log_smtp_success('delivery')
 
 
 def get_email_service() -> EmailService:
