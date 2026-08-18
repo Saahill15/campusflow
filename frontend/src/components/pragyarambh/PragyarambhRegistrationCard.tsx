@@ -12,6 +12,8 @@ export default function PragyarambhRegistrationCard() {
   const [contactNumber, setContactNumber] = useState('')
   const [email, setEmail] = useState('')
   const [gender, setGender] = useState('Male')
+  const [paymentReference, setPaymentReference] = useState('')
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -47,6 +49,12 @@ export default function PragyarambhRegistrationCard() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!email.trim() || !emailPattern.test(email)) errors.email = 'Please enter a valid email address.'
 
+    // Payment validation for Second and Third Year
+    if (year === 'Second Year' || year === 'Third Year') {
+      if (!paymentReference.trim()) errors.paymentReference = 'Payment reference is required for ' + year + '.'
+      if (!paymentProofFile) errors.paymentProof = 'Payment proof is required for ' + year + '.'
+    }
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -64,16 +72,36 @@ export default function PragyarambhRegistrationCard() {
     setIsSubmitting(true)
 
     try {
-      const response = await api.post('/registration', {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        department: department.trim(),
-        academic_year: year.trim(),
-        roll_number: fullRollNumber.trim(),
-        phone: contactNumber.trim(),
-        email: email.trim().toLowerCase(),
-        gender: gender.trim(),
-      })
+      // Build FormData for file upload
+      const formData = new FormData()
+      formData.append('first_name', firstName.trim())
+      formData.append('last_name', lastName.trim())
+      formData.append('department', department.trim())
+      formData.append('academic_year', year.trim())
+      formData.append('roll_number', fullRollNumber.trim())
+      formData.append('phone', contactNumber.trim())
+      formData.append('email', email.trim().toLowerCase())
+      formData.append('gender', gender.trim())
+
+      if (paymentReference) {
+        formData.append('payment_reference', paymentReference.trim())
+      }
+
+      if (paymentProofFile) {
+        formData.append('payment_proof', paymentProofFile)
+      }
+
+      // Submit with multipart/form-data to handle file upload
+      const response = await axios.post(
+        `${api.defaults.baseURL || '/api/v1'}/registration/with-proof`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          timeout: 30000,
+        }
+      )
 
       if (response.status === 200) {
         setRegistrationNumber(response.data.registration_number)
@@ -304,6 +332,93 @@ export default function PragyarambhRegistrationCard() {
             </label>
           </div>
         </section>
+
+        {(year === 'Second Year' || year === 'Third Year') && (
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="mb-6">
+              <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/90">Payment</p>
+              <h4 className="mt-2 text-lg font-semibold text-white">Payment Details</h4>
+            </div>
+
+            <p className="mb-6 text-sm text-slate-300">
+              As a {year} student, payment is required to complete your registration.
+            </p>
+
+            <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <img
+                src="/payment-qr.jpeg"
+                alt="Payment QR Code"
+                className="mx-auto h-48 w-48 rounded"
+              />
+              <p className="mt-4 text-center text-xs text-slate-400">
+                Scan the QR code or use the payment reference below to make your payment.
+              </p>
+            </div>
+
+            <label className="flex flex-col gap-2 text-sm text-slate-100">
+              <span className="flex items-center gap-1">Payment Reference <span className="text-rose-300">*</span></span>
+              <input
+                value={paymentReference}
+                onChange={(e) => {
+                  setPaymentReference(e.target.value)
+                  if (validationErrors.paymentReference) {
+                    setValidationErrors((current) => ({ ...current, paymentReference: '' }))
+                  }
+                }}
+                placeholder="e.g., UPI/Transaction ID from payment gateway"
+                aria-invalid={!!validationErrors.paymentReference}
+                aria-describedby={validationErrors.paymentReference ? 'payment-reference-error' : undefined}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
+                required
+              />
+              {validationErrors.paymentReference && (
+                <p id="payment-reference-error" className="text-xs text-rose-300">{validationErrors.paymentReference}</p>
+              )}
+            </label>
+
+            <label className="mt-4 flex flex-col gap-2 text-sm text-slate-100">
+              <span className="flex items-center gap-1">Upload Payment Proof <span className="text-rose-300">*</span></span>
+              <input
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      setValidationErrors((current) => ({
+                        ...current,
+                        paymentProof: 'File size must not exceed 5 MB.',
+                      }))
+                      return
+                    }
+                    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
+                    if (!allowedTypes.includes(file.type)) {
+                      setValidationErrors((current) => ({
+                        ...current,
+                        paymentProof: 'Only JPEG, PNG, or PDF files are allowed.',
+                      }))
+                      return
+                    }
+                    setPaymentProofFile(file)
+                    if (validationErrors.paymentProof) {
+                      setValidationErrors((current) => ({ ...current, paymentProof: '' }))
+                    }
+                  }
+                }}
+                accept=".jpg,.jpeg,.png,.pdf"
+                aria-invalid={!!validationErrors.paymentProof}
+                aria-describedby={validationErrors.paymentProof ? 'payment-proof-error' : undefined}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-400 outline-none transition focus:border-cyan-300"
+                required
+              />
+              {validationErrors.paymentProof && (
+                <p id="payment-proof-error" className="text-xs text-rose-300">{validationErrors.paymentProof}</p>
+              )}
+              {paymentProofFile && (
+                <p className="text-xs text-cyan-300">✓ File selected: {paymentProofFile.name}</p>
+              )}
+            </label>
+          </section>
+        )}
 
         <button
           type="button"

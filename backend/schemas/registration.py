@@ -31,6 +31,8 @@ class RegistrationCreate(BaseModel):
     phone: str = Field(..., min_length=7)
     email: str
     gender: str = Field(..., min_length=1)
+    payment_reference: Optional[str] = None
+    payment_proof: Optional[str] = None
 
     @field_validator('phone')
     @classmethod
@@ -54,6 +56,20 @@ class RegistrationCreate(BaseModel):
         if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', normalized):
             raise ValueError('Please enter a valid email address')
         return normalized
+
+    @field_validator('payment_reference')
+    @classmethod
+    def validate_payment_reference(cls, value: Optional[str]) -> Optional[str]:
+        if value and len(value) > 255:
+            raise ValueError('Payment reference must not exceed 255 characters')
+        return value.strip() if value else None
+
+    @field_validator('payment_proof')
+    @classmethod
+    def validate_payment_proof(cls, value: Optional[str]) -> Optional[str]:
+        if value and len(value) > 1024:
+            raise ValueError('Payment proof path/URI must not exceed 1024 characters')
+        return value.strip() if value else None
 
 
 class RegistrationUpdate(BaseModel):

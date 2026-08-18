@@ -41,6 +41,7 @@ class RegistrationService:
     async def create_registration(self, payload: dict, event_id: str) -> Registration:
         normalized_email = (payload.get('email') or '').strip().lower()
         normalized_roll = (payload.get('roll_number') or '').strip().upper()
+        academic_year = (payload.get('academic_year') or '').strip()
 
         duplicate_statuses = [
             RegistrationStatus.Pending,
@@ -67,18 +68,37 @@ class RegistrationService:
             if existing_roll:
                 raise ValueError('duplicate_roll_number')
 
+        # Validate payment requirements based on academic year
+        payment_status = 'not_required'
+        payment_amount = None
+        payment_reference = (payload.get('payment_reference') or '').strip() or None
+        payment_proof = (payload.get('payment_proof') or '').strip() or None
+
+        if academic_year in ('Second Year', 'Third Year'):
+            # Payment is required for Second and Third year students
+            if not payment_reference:
+                raise ValueError('Payment reference is required for Second and Third Year registrations.')
+            if not payment_proof:
+                raise ValueError('Payment proof is required for Second and Third Year registrations.')
+            payment_status = 'pending'
+            payment_amount = 250.0  # Fixed amount in INR (₹250)
+
         reg = Registration(
             event_id=event_id,
             user_id=None,
             first_name=(payload.get('first_name') or '').strip(),
             last_name=(payload.get('last_name') or '').strip(),
             department=(payload.get('department') or '').strip(),
-            academic_year=(payload.get('academic_year') or '').strip(),
+            academic_year=academic_year,
             roll_number=normalized_roll,
             phone=(payload.get('phone') or '').strip(),
             email=normalized_email,
             gender=(payload.get('gender') or '').strip(),
             status=RegistrationStatus.Pending,
+            payment_status=payment_status,
+            payment_amount=payment_amount,
+            payment_reference=payment_reference,
+            payment_proof=payment_proof,
         )
 
         max_retries = 5

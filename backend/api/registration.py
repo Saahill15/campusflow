@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta, timezone
 import re
 import secrets
+import base64
+import io
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status, File, Form, UploadFile, Request
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +18,7 @@ from models.registration import Registration, RegistrationStatus
 from schemas.registration import RegistrationCreate, RegistrationSubmissionResponse
 from services.email_service import build_registration_confirmation_email, get_email_service
 from services.registration_service import RegistrationService
+from middleware.rate_limiter import registration_limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -275,13 +278,118 @@ async def delete_known_test_registration(
 @router.post('/registration', response_model=RegistrationSubmissionResponse)
 async def create_registration(
     payload: RegistrationCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     email_service=Depends(get_email_service),
 ):
+    # Rate limiting based on email (check first, before duplicate detection)
+    if not registration_limiter.is_allowed(payload.email.lower()):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Too many registration attempts. Please try again later.'
+        )
+
     service = RegistrationService(db)
     event = await get_or_create_pragyarambh_event(db)
     try:
         registration = await service.create_registration(payload.model_dump(), event.id)
+    except ValueError as exc:
+        detail = str(exc)
+        if detail in {'duplicate_roll_number', 'duplicate_email'}:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='A registration already exists for this roll number or email.') from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+
+    email_enabled = getattr(email_service, 'enabled', False)
+    confirmation_email_sent = False
+    response_message = 'Registration submitted successfully.'
+
+    if email_enabled:
+        subject, body = build_registration_confirmation_email(registration.registration_number)
+        try:
+            await email_service.send_email(registration.email, subject, body)
+            confirmation_email_sent = True
+        except Exception:
+            confirmation_email_sent = False
+            response_message = 'Registration submitted successfully. Confirmation email could not be delivered at the moment.'
+            logger.exception('Registration confirmation email delivery failed')
+    else:
+        response_message = 'Registration submitted successfully. Email notifications are disabled.'
+
+    return RegistrationSubmissionResponse(
+        registration_number=registration.registration_number,
+        status=registration.status,
+        email=registration.email,
+        message=response_message,
+        confirmation_email_sent=confirmation_email_sent,
+    )
+
+
+@router.post('/registration/with-proof', response_model=RegistrationSubmissionResponse)
+async def create_registration_with_file_upload(
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    department: str = Form(...),
+    academic_year: str = Form(...),
+    roll_number: str = Form(...),
+    phone: str = Form(...),
+    email: str = Form(...),
+    gender: str = Form(...),
+    payment_reference: str = Form(default=''),
+    payment_proof: UploadFile = File(default=None),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    email_service=Depends(get_email_service),
+):
+    """Register with multipart form data and optional file upload for payment proof."""
+
+    # Rate limiting based on email
+    if not registration_limiter.is_allowed(email.lower()):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Too many registration attempts. Please try again later.'
+        )
+
+    # Validate file size and type if provided
+    if payment_proof:
+        MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+        file_content = await payment_proof.read()
+        if len(file_content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Payment proof file size must not exceed 5 MB.',
+            )
+
+        ALLOWED_TYPES = {'image/jpeg', 'image/png', 'application/pdf'}
+        if payment_proof.content_type not in ALLOWED_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Payment proof must be a JPEG, PNG, or PDF file.',
+            )
+
+        # Encode file as base64 data URI for storage
+        file_bytes = file_content
+        encoded = base64.b64encode(file_bytes).decode('utf-8')
+        payment_proof_str = f"data:{payment_proof.content_type};base64,{encoded}"
+    else:
+        payment_proof_str = None
+
+    payload = {
+        'first_name': first_name,
+        'last_name': last_name,
+        'department': department,
+        'academic_year': academic_year,
+        'roll_number': roll_number,
+        'phone': phone,
+        'email': email,
+        'gender': gender,
+        'payment_reference': payment_reference if payment_reference else None,
+        'payment_proof': payment_proof_str,
+    }
+
+    service = RegistrationService(db)
+    event = await get_or_create_pragyarambh_event(db)
+    try:
+        registration = await service.create_registration(payload, event.id)
     except ValueError as exc:
         detail = str(exc)
         if detail in {'duplicate_roll_number', 'duplicate_email'}:
