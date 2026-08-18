@@ -78,7 +78,13 @@ class Settings(BaseSettings):
                 "http://127.0.0.1:5173",
             ]
             return list(dict.fromkeys(defaults + normalized))
-        return normalized
+
+        defaults = [
+            "https://campusflow-1-wu89.onrender.com",
+            "https://www.pragyarambh.tech",
+            "https://pragyarambh.tech",
+        ]
+        return list(dict.fromkeys(defaults + normalized))
 
     @property
     def cors_allow_credentials(self) -> bool:
