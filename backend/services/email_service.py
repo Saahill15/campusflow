@@ -78,10 +78,23 @@ class SMTPEmailService(EmailService):
             message = message.replace(self.from_email, self._mask_address(self.from_email))
         return message
 
-    def _log_smtp_failure(self, stage: str, exc: Exception) -> None:
+    def _log_smtp_start(self, stage: str, **details: str) -> None:
+        detail_string = ' '.join(f'{key}={value}' for key, value in details.items())
+        logger.info(
+            'SMTP diagnostic: stage=%s action=start host=%s port=%s username=%s from_address=%s %s',
+            stage,
+            self.host,
+            self.port,
+            self._mask_address(self.username),
+            self._mask_address(self.from_email),
+            detail_string,
+        )
+
+    def _log_smtp_failure(self, stage: str, exc: Exception, **details: str) -> None:
+        detail_string = ' '.join(f'{key}={value}' for key, value in details.items())
         logger.error(
             'SMTP diagnostic: stage=%s host=%s port=%s username=%s from_address=%s '
-            'error_type=%s error_code=%s error_message=%s',
+            'error_type=%s error_code=%s error_message=%s%s',
             stage,
             self.host,
             self.port,
@@ -90,12 +103,13 @@ class SMTPEmailService(EmailService):
             type(exc).__name__,
             getattr(exc, 'smtp_code', None),
             self._safe_error_message(exc),
+            f' {detail_string}' if detail_string else '',
         )
 
     def _log_smtp_success(self, stage: str, **details: str) -> None:
         detail_string = ' '.join(f'{key}={value}' for key, value in details.items())
         logger.info(
-            'SMTP diagnostic: stage=%s result=success host=%s port=%s username=%s from_address=%s %s',
+            'SMTP diagnostic: stage=%s action=success host=%s port=%s username=%s from_address=%s %s',
             stage,
             self.host,
             self.port,
@@ -126,41 +140,62 @@ class SMTPEmailService(EmailService):
         server: smtplib.SMTP | smtplib.SMTP_SSL | None = None
         operation_failed = False
         tls_mode = 'implicit_ssl' if self.port == 465 else ('starttls' if self.use_tls else 'disabled')
-        self._log_smtp_success('configuration', tls_mode=tls_mode)
+        self._log_smtp_start('configuration', tls_mode=tls_mode)
         try:
+            self._log_smtp_success('configuration', tls_mode=tls_mode)
+
             if self.port == 465:
+                self._log_smtp_start('connection', tls_mode=tls_mode)
                 try:
                     server = smtplib.SMTP_SSL(self.host, self.port, context=context, timeout=20)
                 except Exception as exc:
-                    self._log_smtp_failure('TLS/SSL', exc)
+                    self._log_smtp_failure('connection', exc, tls_mode=tls_mode)
                     raise
+                self._log_smtp_success('connection', tls_mode=tls_mode)
+
+                self._log_smtp_start('ehlo', tls_mode=tls_mode)
                 try:
                     server.ehlo()
                 except Exception as exc:
-                    self._log_smtp_failure('TLS/SSL', exc)
+                    self._log_smtp_failure('ehlo', exc, tls_mode=tls_mode)
                     raise
-                self._log_smtp_success('connection', tls_mode=tls_mode)
+                self._log_smtp_success('ehlo', tls_mode=tls_mode)
             else:
+                self._log_smtp_start('connection', tls_mode=tls_mode)
                 try:
                     server = smtplib.SMTP(self.host, self.port, timeout=20)
                 except Exception as exc:
-                    self._log_smtp_failure('connection', exc)
+                    self._log_smtp_failure('connection', exc, tls_mode=tls_mode)
                     raise
+                self._log_smtp_success('connection', tls_mode=tls_mode)
+
+                self._log_smtp_start('ehlo', tls_mode=tls_mode)
                 try:
                     server.ehlo()
                 except Exception as exc:
-                    self._log_smtp_failure('connection', exc)
+                    self._log_smtp_failure('ehlo', exc, tls_mode=tls_mode)
                     raise
-                self._log_smtp_success('connection', tls_mode=tls_mode)
+                self._log_smtp_success('ehlo', tls_mode=tls_mode)
+
                 if self.use_tls:
+                    self._log_smtp_start('starttls', tls_mode=tls_mode)
                     try:
                         server.starttls(context=context)
+                    except Exception as exc:
+                        self._log_smtp_failure('starttls', exc, tls_mode=tls_mode)
+                        raise
+                    self._log_smtp_success('starttls', tls_mode=tls_mode)
+
+                    self._log_smtp_start('ehlo_post_starttls', tls_mode=tls_mode)
+                    try:
                         server.ehlo()
                     except Exception as exc:
-                        self._log_smtp_failure('TLS/SSL', exc)
+                        self._log_smtp_failure('ehlo_post_starttls', exc, tls_mode=tls_mode)
                         raise
-                    self._log_smtp_success('TLS/SSL', tls_mode=tls_mode)
+                    self._log_smtp_success('ehlo_post_starttls', tls_mode=tls_mode)
+
             if self.username and self.password:
+                self._log_smtp_start('authentication')
                 try:
                     server.login(self.username, self.password)
                 except Exception as exc:
@@ -168,7 +203,15 @@ class SMTPEmailService(EmailService):
                     raise
                 self._log_smtp_success('authentication')
             else:
-                logger.info('SMTP diagnostic: stage=authentication result=skipped host=%s port=%s', self.host, self.port)
+                logger.info(
+                    'SMTP diagnostic: stage=authentication action=skipped host=%s port=%s username=%s from_address=%s',
+                    self.host,
+                    self.port,
+                    self._mask_address(self.username),
+                    self._mask_address(self.from_email),
+                )
+
+            self._log_smtp_start('sendmail')
             try:
                 server.send_message(message)
             except Exception as exc:
@@ -180,12 +223,11 @@ class SMTPEmailService(EmailService):
             raise
         finally:
             if server is not None:
+                self._log_smtp_start('quit')
                 try:
                     server.quit()
                 except Exception as exc:
                     self._log_smtp_failure('quit', exc)
-                    if not operation_failed:
-                        raise
                 else:
                     self._log_smtp_success('quit')
 
