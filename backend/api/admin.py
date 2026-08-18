@@ -20,7 +20,9 @@ from schemas.admin import (
     AdminRegistrationRejectionResponse,
 )
 from schemas.common import PaginationMeta
+from schemas.system_settings import SystemSettingsResponse, SystemSettingsUpdate
 from services.admin_registration_service import AdminRegistrationService
+from services.system_settings_service import SystemSettingsService
 from services.email_service import (
     build_registration_approval_email,
     build_registration_rejection_email,
@@ -89,6 +91,26 @@ async def get_dashboard_summary(
 ):
     service = AdminRegistrationService(db)
     return await service.get_dashboard_summary()
+
+
+@router.get('/settings', response_model=SystemSettingsResponse)
+async def get_system_settings(
+    _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    settings = await SystemSettingsService(db).get_settings()
+    return SystemSettingsResponse.model_validate(settings)
+
+
+@router.patch('/settings', response_model=SystemSettingsResponse)
+async def update_system_settings(
+    payload: SystemSettingsUpdate,
+    _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    changes = payload.model_dump(exclude_unset=True, exclude_none=True)
+    settings = await SystemSettingsService(db).update_settings(changes)
+    return SystemSettingsResponse.model_validate(settings)
 
 
 @router.get('/registrations', response_model=AdminRegistrationListResponse)
