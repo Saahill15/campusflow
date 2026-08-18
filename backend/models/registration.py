@@ -63,7 +63,7 @@ class Registration(Base):
     payment_mode: Optional[str] = Column(String(100), nullable=True)
     payment_amount: Optional[float] = Column(Float, nullable=True)
     payment_reference: Optional[str] = Column(String(255), nullable=True)
-    payment_proof: Optional[str] = Column(String(1024), nullable=True)
+    payment_proof: Optional[str] = Column(Text, nullable=True)
 
     approved_by: Optional[int] = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     approved_at: Optional[datetime] = Column(DateTime(timezone=True), nullable=True)
