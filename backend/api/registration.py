@@ -35,6 +35,47 @@ _DUPLICATE_STATUSES = [
 ]
 
 
+def _validate_payment_proof_bytes(file_name: str | None, file_content: bytes, declared_content_type: str | None) -> str:
+    allowed_types = {'image/jpeg', 'image/png'}
+    if declared_content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Payment proof must be a JPEG or PNG image file. PDF and other formats are not accepted.',
+        )
+    if not file_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Payment proof file is empty.',
+        )
+
+    if declared_content_type == 'image/png' and not file_content.startswith(b'\x89PNG\r\n\x1a\n'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Payment proof file is not a valid PNG image.',
+        )
+    if declared_content_type == 'image/jpeg' and not file_content.startswith(b'\xFF\xD8\xFF'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Payment proof file is not a valid JPEG image.',
+        )
+
+    if file_name:
+        extension = file_name.lower().split('.')[-1] if '.' in file_name else ''
+        extension_expectations = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+        }
+        expected_type = extension_expectations.get(extension)
+        if expected_type and expected_type != declared_content_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Payment proof file type does not match the uploaded file name.',
+            )
+
+    return declared_content_type
+
+
 async def get_or_create_pragyarambh_event(db: AsyncSession) -> Event:
     result = await db.execute(select(Event).where(Event.slug == 'pragyarambh-2026'))
     event = result.scalars().first()
@@ -350,7 +391,7 @@ async def create_registration_with_file_upload(
             detail='Too many registration attempts. Please try again later.'
         )
 
-    # Validate file size and type if provided
+    # Validate file size and bytes before accepting the upload
     if payment_proof:
         MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
         file_content = await payment_proof.read()
@@ -360,17 +401,11 @@ async def create_registration_with_file_upload(
                 detail='Payment proof file size must not exceed 5 MB.',
             )
 
-        ALLOWED_TYPES = {'image/jpeg', 'image/png', 'application/pdf'}
-        if payment_proof.content_type not in ALLOWED_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Payment proof must be a JPEG, PNG, or PDF file.',
-            )
+        validated_type = _validate_payment_proof_bytes(payment_proof.filename, file_content, payment_proof.content_type)
 
         # Encode file as base64 data URI for storage
-        file_bytes = file_content
-        encoded = base64.b64encode(file_bytes).decode('utf-8')
-        payment_proof_str = f"data:{payment_proof.content_type};base64,{encoded}"
+        encoded = base64.b64encode(file_content).decode('utf-8')
+        payment_proof_str = f"data:{validated_type};base64,{encoded}"
     else:
         payment_proof_str = None
 

@@ -366,7 +366,7 @@ export default function PragyarambhRegistrationCard() {
 
                   <label className="flex flex-col gap-3">
                     <span className="text-sm font-semibold text-[#E0D0B6]">Upload Proof</span>
-                    <p className="text-xs text-[#8B9EA5]">JPEG, PNG, or PDF (Max 5MB)</p>
+                    <p className="text-xs text-[#8B9EA5]">JPEG or PNG only (Max 5MB)</p>
                     <input
                       type="file"
                       onChange={(e) => {
@@ -376,16 +376,16 @@ export default function PragyarambhRegistrationCard() {
                             setValidationErrors((c) => ({ ...c, paymentProof: 'Max 5 MB' }))
                             return
                           }
-                          const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
+                          const allowedTypes = ['image/jpeg', 'image/png']
                           if (!allowedTypes.includes(file.type)) {
-                            setValidationErrors((c) => ({ ...c, paymentProof: 'JPEG, PNG, or PDF only' }))
+                            setValidationErrors((c) => ({ ...c, paymentProof: 'JPEG or PNG only' }))
                             return
                           }
                           setPaymentProofFile(file)
                           if (validationErrors.paymentProof) setValidationErrors((c) => ({ ...c, paymentProof: '' }))
                         }
                       }}
-                      accept=".jpg,.jpeg,.png,.pdf"
+                      accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                       className="text-xs text-[#8B9EA5] file:text-xs file:font-semibold file:text-[#CC9E4C] file:bg-transparent file:border file:border-[#CC9E4C]/30 file:px-3 file:py-1 file:rounded cursor-pointer"
                     />
                     {validationErrors.paymentProof && <p className="text-xs text-[#E09999]">{validationErrors.paymentProof}</p>}
