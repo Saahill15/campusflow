@@ -12,6 +12,7 @@ export default function PragyarambhRegistrationCard() {
   const [contactNumber, setContactNumber] = useState('')
   const [email, setEmail] = useState('')
   const [gender, setGender] = useState('Male')
+  const [paymentMode, setPaymentMode] = useState<'upi' | 'cash'>('upi')
   const [paymentReference, setPaymentReference] = useState('')
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -51,8 +52,13 @@ export default function PragyarambhRegistrationCard() {
 
     // Payment validation for Second and Third Year
     if (year === 'Second Year' || year === 'Third Year') {
-      if (!paymentReference.trim()) errors.paymentReference = 'Payment reference is required for ' + year + '.'
-      if (!paymentProofFile) errors.paymentProof = 'Payment proof is required for ' + year + '.'
+      if (!paymentMode || (paymentMode !== 'upi' && paymentMode !== 'cash')) {
+        errors.paymentMode = 'Payment mode is required for ' + year + '.'
+      }
+      if (paymentMode === 'upi') {
+        if (!paymentReference.trim()) errors.paymentReference = 'Payment reference is required for UPI payments.'
+        if (!paymentProofFile) errors.paymentProof = 'Payment proof is required for UPI payments.'
+      }
     }
 
     setValidationErrors(errors)
@@ -83,12 +89,17 @@ export default function PragyarambhRegistrationCard() {
       formData.append('email', email.trim().toLowerCase())
       formData.append('gender', gender.trim())
 
-      if (paymentReference) {
-        formData.append('payment_reference', paymentReference.trim())
+      if (year === 'Second Year' || year === 'Third Year') {
+        formData.append('payment_mode', paymentMode)
       }
 
-      if (paymentProofFile) {
-        formData.append('payment_proof', paymentProofFile)
+      if (paymentMode === 'upi') {
+        if (paymentReference) {
+          formData.append('payment_reference', paymentReference.trim())
+        }
+        if (paymentProofFile) {
+          formData.append('payment_proof', paymentProofFile)
+        }
       }
 
       // Submit with multipart/form-data to handle file upload
@@ -341,82 +352,120 @@ export default function PragyarambhRegistrationCard() {
             </div>
 
             <p className="mb-6 text-sm text-slate-300">
-              As a {year} student, payment is required to complete your registration.
+              As a {year} student, a ₹250 payment is required to complete your registration.
             </p>
 
-            <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <img
-                src="/payment-qr.jpeg"
-                alt="Payment QR Code"
-                className="mx-auto h-48 w-48 rounded"
-              />
-              <p className="mt-4 text-center text-xs text-slate-400">
-                Scan the QR code or use the payment reference below to make your payment.
-              </p>
-            </div>
-
             <label className="flex flex-col gap-2 text-sm text-slate-100">
-              <span className="flex items-center gap-1">Payment Reference <span className="text-rose-300">*</span></span>
-              <input
-                value={paymentReference}
+              <span className="flex items-center gap-1">Payment Mode <span className="text-rose-300">*</span></span>
+              <select
+                value={paymentMode}
                 onChange={(e) => {
-                  setPaymentReference(e.target.value)
+                  const nextMode = e.target.value as 'upi' | 'cash'
+                  setPaymentMode(nextMode)
+                  if (nextMode === 'cash') {
+                    setPaymentReference('')
+                    setPaymentProofFile(null)
+                  }
+                  if (validationErrors.paymentMode) {
+                    setValidationErrors((current) => ({ ...current, paymentMode: '' }))
+                  }
                   if (validationErrors.paymentReference) {
                     setValidationErrors((current) => ({ ...current, paymentReference: '' }))
                   }
+                  if (validationErrors.paymentProof) {
+                    setValidationErrors((current) => ({ ...current, paymentProof: '' }))
+                  }
                 }}
-                placeholder="e.g., UPI/Transaction ID from payment gateway"
-                aria-invalid={!!validationErrors.paymentReference}
-                aria-describedby={validationErrors.paymentReference ? 'payment-reference-error' : undefined}
+                aria-invalid={!!validationErrors.paymentMode}
+                aria-describedby={validationErrors.paymentMode ? 'payment-mode-error' : undefined}
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
                 required
-              />
-              {validationErrors.paymentReference && (
-                <p id="payment-reference-error" className="text-xs text-rose-300">{validationErrors.paymentReference}</p>
+              >
+                <option value="upi">UPI</option>
+                <option value="cash">Cash</option>
+              </select>
+              {validationErrors.paymentMode && (
+                <p id="payment-mode-error" className="text-xs text-rose-300">{validationErrors.paymentMode}</p>
               )}
             </label>
 
-            <label className="mt-4 flex flex-col gap-2 text-sm text-slate-100">
-              <span className="flex items-center gap-1">Upload Payment Proof <span className="text-rose-300">*</span></span>
-              <input
-                type="file"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                      setValidationErrors((current) => ({
-                        ...current,
-                        paymentProof: 'File size must not exceed 5 MB.',
-                      }))
-                      return
-                    }
-                    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
-                    if (!allowedTypes.includes(file.type)) {
-                      setValidationErrors((current) => ({
-                        ...current,
-                        paymentProof: 'Only JPEG, PNG, or PDF files are allowed.',
-                      }))
-                      return
-                    }
-                    setPaymentProofFile(file)
-                    if (validationErrors.paymentProof) {
-                      setValidationErrors((current) => ({ ...current, paymentProof: '' }))
-                    }
-                  }
-                }}
-                accept=".jpg,.jpeg,.png,.pdf"
-                aria-invalid={!!validationErrors.paymentProof}
-                aria-describedby={validationErrors.paymentProof ? 'payment-proof-error' : undefined}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-400 outline-none transition focus:border-cyan-300"
-                required
-              />
-              {validationErrors.paymentProof && (
-                <p id="payment-proof-error" className="text-xs text-rose-300">{validationErrors.paymentProof}</p>
-              )}
-              {paymentProofFile && (
-                <p className="text-xs text-cyan-300">✓ File selected: {paymentProofFile.name}</p>
-              )}
-            </label>
+            {paymentMode === 'upi' && (
+              <>
+                <div className="mt-6 mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <img
+                    src="/payment-qr.jpeg"
+                    alt="Payment QR Code"
+                    className="mx-auto h-48 w-48 rounded"
+                  />
+                  <p className="mt-4 text-center text-xs text-slate-400">
+                    Scan the QR code and pay ₹250. Then enter the transaction reference and upload proof.
+                  </p>
+                </div>
+
+                <label className="flex flex-col gap-2 text-sm text-slate-100">
+                  <span className="flex items-center gap-1">Payment Reference <span className="text-rose-300">*</span></span>
+                  <input
+                    value={paymentReference}
+                    onChange={(e) => {
+                      setPaymentReference(e.target.value)
+                      if (validationErrors.paymentReference) {
+                        setValidationErrors((current) => ({ ...current, paymentReference: '' }))
+                      }
+                    }}
+                    placeholder="e.g., UPI/Transaction ID from payment gateway"
+                    aria-invalid={!!validationErrors.paymentReference}
+                    aria-describedby={validationErrors.paymentReference ? 'payment-reference-error' : undefined}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
+                    required
+                  />
+                  {validationErrors.paymentReference && (
+                    <p id="payment-reference-error" className="text-xs text-rose-300">{validationErrors.paymentReference}</p>
+                  )}
+                </label>
+
+                <label className="mt-4 flex flex-col gap-2 text-sm text-slate-100">
+                  <span className="flex items-center gap-1">Upload Payment Proof <span className="text-rose-300">*</span></span>
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          setValidationErrors((current) => ({
+                            ...current,
+                            paymentProof: 'File size must not exceed 5 MB.',
+                          }))
+                          return
+                        }
+                        const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
+                        if (!allowedTypes.includes(file.type)) {
+                          setValidationErrors((current) => ({
+                            ...current,
+                            paymentProof: 'Only JPEG, PNG, or PDF files are allowed.',
+                          }))
+                          return
+                        }
+                        setPaymentProofFile(file)
+                        if (validationErrors.paymentProof) {
+                          setValidationErrors((current) => ({ ...current, paymentProof: '' }))
+                        }
+                      }
+                    }}
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    aria-invalid={!!validationErrors.paymentProof}
+                    aria-describedby={validationErrors.paymentProof ? 'payment-proof-error' : undefined}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-400 outline-none transition focus:border-cyan-300"
+                    required
+                  />
+                  {validationErrors.paymentProof && (
+                    <p id="payment-proof-error" className="text-xs text-rose-300">{validationErrors.paymentProof}</p>
+                  )}
+                  {paymentProofFile && (
+                    <p className="text-xs text-cyan-300">✓ File selected: {paymentProofFile.name}</p>
+                  )}
+                </label>
+              </>
+            )}
           </section>
         )}
 

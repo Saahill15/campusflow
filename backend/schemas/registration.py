@@ -31,6 +31,7 @@ class RegistrationCreate(BaseModel):
     phone: str = Field(..., min_length=7)
     email: str
     gender: str = Field(..., min_length=1)
+    payment_mode: Optional[str] = None
     payment_reference: Optional[str] = None
     payment_proof: Optional[str] = None
 
@@ -55,6 +56,16 @@ class RegistrationCreate(BaseModel):
         normalized = value.strip().lower()
         if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', normalized):
             raise ValueError('Please enter a valid email address')
+        return normalized
+
+    @field_validator('payment_mode')
+    @classmethod
+    def validate_payment_mode(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if normalized not in {'upi', 'cash'}:
+            raise ValueError('Payment mode must be either "upi" or "cash"')
         return normalized
 
     @field_validator('payment_reference')

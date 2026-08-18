@@ -334,6 +334,7 @@ async def create_registration_with_file_upload(
     phone: str = Form(...),
     email: str = Form(...),
     gender: str = Form(...),
+    payment_mode: str = Form(default=''),
     payment_reference: str = Form(default=''),
     payment_proof: UploadFile = File(default=None),
     request: Request = None,
@@ -373,6 +374,16 @@ async def create_registration_with_file_upload(
     else:
         payment_proof_str = None
 
+    normalized_payment_mode = (payment_mode or '').strip().lower() or None
+    if normalized_payment_mode == 'cash':
+        payment_reference = None
+        payment_proof_str = None
+    elif normalized_payment_mode == 'upi':
+        payment_reference = payment_reference if payment_reference else None
+    else:
+        payment_reference = None if not payment_reference else payment_reference
+        payment_proof_str = None if not payment_proof_str else payment_proof_str
+
     payload = {
         'first_name': first_name,
         'last_name': last_name,
@@ -382,6 +393,7 @@ async def create_registration_with_file_upload(
         'phone': phone,
         'email': email,
         'gender': gender,
+        'payment_mode': normalized_payment_mode,
         'payment_reference': payment_reference if payment_reference else None,
         'payment_proof': payment_proof_str,
     }

@@ -71,17 +71,24 @@ class RegistrationService:
         # Validate payment requirements based on academic year
         payment_status = 'not_required'
         payment_amount = None
+        payment_mode = (payload.get('payment_mode') or '').strip().lower() or None
         payment_reference = (payload.get('payment_reference') or '').strip() or None
         payment_proof = (payload.get('payment_proof') or '').strip() or None
 
         if academic_year in ('Second Year', 'Third Year'):
-            # Payment is required for Second and Third year students
-            if not payment_reference:
-                raise ValueError('Payment reference is required for Second and Third Year registrations.')
-            if not payment_proof:
-                raise ValueError('Payment proof is required for Second and Third Year registrations.')
+            if payment_mode not in ('upi', 'cash'):
+                raise ValueError('Payment mode is required for Second and Third Year registrations.')
             payment_status = 'pending'
             payment_amount = 250.0  # Fixed amount in INR (₹250)
+
+            if payment_mode == 'upi':
+                if not payment_reference:
+                    raise ValueError('Payment reference is required for UPI payments.')
+                if not payment_proof:
+                    raise ValueError('Payment proof is required for UPI payments.')
+            else:
+                payment_reference = None
+                payment_proof = None
 
         reg = Registration(
             event_id=event_id,
@@ -96,6 +103,7 @@ class RegistrationService:
             gender=(payload.get('gender') or '').strip(),
             status=RegistrationStatus.Pending,
             payment_status=payment_status,
+            payment_mode=payment_mode,
             payment_amount=payment_amount,
             payment_reference=payment_reference,
             payment_proof=payment_proof,
