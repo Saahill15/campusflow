@@ -14,7 +14,7 @@ def generate_pass_png_bytes(
     registration_number: str,
     pass_number: str,
     attendee_name: str,
-    event_title: str = 'Pragyarambh 2026',
+    event_title: str = 'Pragyarambh 3.0',
     department: str = '',
     academic_year: str = '',
     qr_token: Optional[str] = None,

@@ -28,7 +28,7 @@ function PassPreview({ item, pass, qrToken }: any) {
       <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Pass Preview</div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
-          <div className="text-sm text-slate-200 font-semibold">PRAGYARAMBH 2026</div>
+          <div className="text-sm text-slate-200 font-semibold">PRAGYARAMBH 3.0</div>
           <div className="mt-2 text-sm text-white">Student: {item.first_name} {item.last_name}</div>
           <div className="text-sm text-white">Department: {item.department || '-'}</div>
           <div className="text-sm text-white">Year: {item.academic_year || '-'}</div>

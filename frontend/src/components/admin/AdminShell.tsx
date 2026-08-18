@@ -20,7 +20,7 @@ export default function AdminShell() {
   return (
     <div className="min-h-screen flex bg-slate-950 text-white">
       <aside className="hidden w-72 border-r border-white/10 bg-slate-900/90 px-5 py-6 md:block">
-        <div className="text-xs uppercase tracking-[0.3em] text-cyan-300">Pragyarambh 2026</div>
+        <div className="text-xs uppercase tracking-[0.3em] text-cyan-300">Pragyarambh 3.0</div>
         <div className="mt-2 text-xl font-semibold">Admin Portal</div>
         <nav className="mt-8 flex flex-col gap-2">
           {navItems.map((item) => (
@@ -39,7 +39,7 @@ export default function AdminShell() {
         <header className="flex items-center justify-between border-b border-white/10 bg-slate-900/80 px-6 py-4 backdrop-blur">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Admin</p>
-            <h1 className="text-lg font-semibold">Pragyarambh 2026</h1>
+            <h1 className="text-lg font-semibold">Pragyarambh 3.0</h1>
           </div>
           <div className="flex items-center gap-4 text-sm text-slate-300">
             <span>{user?.email ?? 'admin'}</span>

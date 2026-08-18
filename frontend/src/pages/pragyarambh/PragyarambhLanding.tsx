@@ -81,7 +81,7 @@ export default function PragyarambhLanding() {
                 The <span className="text-cyan-300">ultimate</span> welcome night for freshers.
               </h2>
               <p className="max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
-                Join Pragyarambh 2026 for music, lights, rhythm and an unforgettable first impression. Everything is crafted to feel premium, polished, and designed for the new campus generation.
+                Join Pragyarambh 3.0 for music, lights, rhythm and an unforgettable first impression. Everything is crafted to feel premium, polished, and designed for the new campus generation.
               </p>
             </motion.div>
 
@@ -123,7 +123,7 @@ export default function PragyarambhLanding() {
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/90">Registration</p>
-                <h3 className="mt-3 text-2xl font-bold text-white">Register for Pragyarambh 2026</h3>
+                <h3 className="mt-3 text-2xl font-bold text-white">Register for Pragyarambh 3.0</h3>
               </div>
 
               <p className="text-sm leading-6 text-slate-300">

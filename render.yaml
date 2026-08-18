@@ -34,7 +34,7 @@ services:
       - key: MAIL_FROM
         value: hello@pragyarambh.tech
       - key: MAIL_FROM_NAME
-        value: Pragyarambh 2026
+        value: Pragyarambh 3.0
       - key: MAIL_USE_TLS
         value: "true"
 

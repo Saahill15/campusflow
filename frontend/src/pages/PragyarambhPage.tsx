@@ -96,7 +96,7 @@ export default function PragyarambhPage() {
               <Sparkles size={16} className="text-amber-300" />
               August 19 • Main Campus • 6 PM onwards
             </div>
-            <h1 className="max-w-5xl text-5xl font-black uppercase tracking-[0.2em] text-white sm:text-7xl lg:text-8xl">PRAGYARAMBH 2026</h1>
+            <h1 className="max-w-5xl text-5xl font-black uppercase tracking-[0.2em] text-white sm:text-7xl lg:text-8xl">PRAGYARAMBH 3.0</h1>
             <p className="mt-6 text-xl text-slate-300 sm:text-2xl">A Night of Lights, Music, Motion, and Memories</p>
             <div className="mt-10 grid w-full max-w-3xl gap-4 sm:grid-cols-4">
               {stats.map((item) => (

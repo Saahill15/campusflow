@@ -42,9 +42,9 @@ async def get_or_create_pragyarambh_event(db: AsyncSession) -> Event:
         return event
 
     event = Event(
-        title='Pragyarambh 2026',
+        title='Pragyarambh 3.0',
         slug='pragyarambh-2026',
-        description='Pragyarambh 2026 registration event',
+        description='Pragyarambh 3.0 registration event',
         start_datetime=datetime.now(timezone.utc) + timedelta(days=1),
         end_datetime=datetime.now(timezone.utc) + timedelta(days=2),
         status=EventStatus.RegistrationOpen,

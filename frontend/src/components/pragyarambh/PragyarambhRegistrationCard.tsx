@@ -458,7 +458,7 @@ export default function PragyarambhRegistrationCard() {
 
           <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-200">
             <p className="text-sm leading-6">
-              Your registration is now pending approval. Once approved, your official Pragyarambh 2026 pass will be issued to your registered email address.
+              Your registration is now pending approval. Once approved, your official Pragyarambh 3.0 pass will be issued to your registered email address.
             </p>
           </div>
         </div>

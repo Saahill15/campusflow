@@ -45,7 +45,7 @@ def _normalize_database_url(value: str) -> str:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
-    APP_NAME: str = "Pragyarambh 2026"
+    APP_NAME: str = "Pragyarambh 3.0"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     DATABASE_URL: str = DEFAULT_DATABASE_URL

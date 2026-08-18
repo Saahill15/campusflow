@@ -197,23 +197,23 @@ def get_email_service() -> EmailService:
 
 
 def build_registration_confirmation_email(registration_number: str) -> tuple[str, str]:
-    subject = "Pragyarambh 2026 - Registration Submitted Successfully"
+    subject = "Pragyarambh 3.0 - Registration Submitted Successfully"
     body = (
-        "Pragyarambh 2026\n\n"
+        "Pragyarambh 3.0\n\n"
         "Registration Submitted Successfully\n\n"
         f"Registration Number: {registration_number}\n\n"
         "Status: Pending Approval\n\n"
         "Your registration has been successfully received.\n\n"
-        "Your details are currently being reviewed by the administration. Once your registration is approved, your official Pragyarambh 2026 entry pass will automatically be sent to this email address.\n\n"
+        "Your details are currently being reviewed by the administration. Once your registration is approved, your official Pragyarambh 3.0 entry pass will automatically be sent to this email address.\n\n"
         "Please keep this email for your records."
     )
     return subject, body
 
 
 def build_registration_approval_email(registration_number: str, pass_number: str) -> tuple[str, str]:
-    subject = "Pragyarambh 2026 - Registration Approved"
+    subject = "Pragyarambh 3.0 - Registration Approved"
     body = (
-        "Pragyarambh 2026\n\n"
+        "Pragyarambh 3.0\n\n"
         "Registration Approved\n\n"
         f"Registration Number: {registration_number}\n"
         f"Pass Number: {pass_number}\n\n"
@@ -226,14 +226,14 @@ def build_registration_approval_email(registration_number: str, pass_number: str
 
 
 def build_registration_rejection_email(registration_number: str, reason: str) -> tuple[str, str]:
-    subject = "Pragyarambh 2026 - Registration Review Result"
+    subject = "Pragyarambh 3.0 - Registration Review Result"
     body = (
-        "Pragyarambh 2026\n\n"
+        "Pragyarambh 3.0\n\n"
         "Registration Rejected\n\n"
         f"Registration Number: {registration_number}\n\n"
         "We regret to inform you that your registration was not approved.\n\n"
         f"Reason: {reason}\n\n"
         "If you believe this was an error, please contact the event administration team for assistance.\n\n"
-        "Thank you for your interest in Pragyarambh 2026."
+        "Thank you for your interest in Pragyarambh 3.0."
     )
     return subject, body

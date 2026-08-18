@@ -91,7 +91,7 @@ async def approve_registration(
             qr = await QRCodeService(db).get_by_pass(p.id)
             qr_token = qr.qr_token if qr else None
             attendee_name = ' '.join(filter(None, [registration.first_name, registration.last_name])) or 'Attendee'
-            event_title = 'Pragyarambh 2026'
+            event_title = 'Pragyarambh 3.0'
             try:
                 result = await db.execute(select(Event.title).where(Event.id == registration.event_id))
                 event_title = result.scalar_one_or_none() or event_title

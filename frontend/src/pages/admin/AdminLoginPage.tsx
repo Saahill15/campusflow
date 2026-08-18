@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl shadow-black/40">
         <div className="mb-8 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Pragyarambh 2026</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Pragyarambh 3.0</p>
           <h1 className="text-3xl font-semibold">Admin Login</h1>
           <p className="text-sm text-slate-400">Sign in with an admin account to access registration management.</p>
         </div>

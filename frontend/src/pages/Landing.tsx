@@ -4,7 +4,7 @@ import { Button } from '../components/ui'
 
 const upcomingEvents = [
   {
-    title: 'Pragyarambh 2026',
+    title: 'Pragyarambh 3.0',
     subtitle: 'Freshers Night',
     meta: '19 Aug • Auditorium',
     cta: 'Register Now',
