@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronDown, Menu, X } from 'lucide-react'
+import { ChevronDown, Menu, Volume2, VolumeX, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export default function PragyarambhLanding() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [videoError, setVideoError] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const navigate = useNavigate()
 
@@ -13,9 +14,11 @@ export default function PragyarambhLanding() {
     const video = videoRef.current
     if (!video) return
 
+    video.muted = isMuted
+    video.volume = isMuted ? 0 : 1
+
     const playVideo = async () => {
       try {
-        video.muted = true
         await video.play()
       } catch {
         // autoplay may be blocked; ignore
@@ -23,7 +26,7 @@ export default function PragyarambhLanding() {
     }
 
     playVideo()
-  }, [])
+  }, [isMuted])
 
   return (
     <div className="min-h-screen bg-[#1A120D] text-[#E0D0B6]">
@@ -125,7 +128,7 @@ export default function PragyarambhLanding() {
               transition={{ duration: 0.8, delay: 0.1 }}
               className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black"
             >
-              The Premium Freshers' Experience
+              Retro Roots. Fresh Energy.
             </motion.div>
 
             {/* Main Headline */}
@@ -182,6 +185,15 @@ export default function PragyarambhLanding() {
             </motion.div>
           </motion.div>
 
+          <button
+            type="button"
+            aria-label={isMuted ? 'Unmute background video' : 'Mute background video'}
+            onClick={() => setIsMuted((prev) => !prev)}
+            className="absolute bottom-5 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[#CC9E4C]/50 bg-[#1A120D]/65 text-[#E0D0B6] shadow-lg shadow-[#1A120D]/40 backdrop-blur-sm transition hover:border-[#CC9E4C] hover:text-[#CC9E4C] md:bottom-8 md:right-8"
+          >
+            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+
           {/* Scroll Indicator */}
           <motion.div
             animate={{ y: [0, 12, 0] }}
@@ -217,7 +229,7 @@ export default function PragyarambhLanding() {
                 </h2>
               </div>
               <p className="text-base text-[#D4C5AC] leading-relaxed font-light max-w-lg">
-                Cybersecurity, Data Science and AI & ML — three departments, one freshers experience, and plenty of new people to pretend you already know.
+                Cybersecurity and Digital Forensics, Data Science and Data Analysis, and Artificial Intelligence and Machine Learning — three departments, one freshers experience, and plenty of new people to pretend you already know.
               </p>
             </motion.div>
 
@@ -230,7 +242,7 @@ export default function PragyarambhLanding() {
               className="grid grid-cols-2 gap-8"
             >
               {[
-                { number: '3', label: 'Departments', detail: 'Cybersecurity • Data Science • AI & ML' },
+                { number: '3', label: 'Departments', detail: 'Cybersecurity and Digital Forensics • Data Science and Data Analysis • Artificial Intelligence and Machine Learning' },
                 { number: '1', label: 'Shared Beginning', detail: 'New faces, new connections' },
                 { number: 'Freshers', label: 'Edition', detail: 'Made for the newest members of our campus' },
                 { number: 'Retro', label: 'Fusion', detail: 'A blend of nostalgia and modern energy' },
@@ -315,6 +327,35 @@ export default function PragyarambhLanding() {
         </div>
       </section>
 
+      {/* Pragyarambh 2.0 Highlights */}
+      <section className="relative bg-[#201611] px-4 py-20 sm:px-8 md:py-32">
+        <div className="mx-auto max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="rounded-2xl border border-[#CC9E4C]/15 bg-[#1A120D]/80 p-8 text-center shadow-[0_0_30px_rgba(204,158,76,0.08)] md:p-12"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black mb-4">Pragyarambh 2.0</p>
+            <h2 className="text-4xl sm:text-5xl font-black leading-tight text-[#E0D0B6] tracking-[-0.02em]">
+              A Glimpse of Pragyarambh 2.0
+            </h2>
+            <p className="mx-auto mt-6 max-w-2xl text-base text-[#D4C5AC] font-light leading-relaxed">
+              Before we begin the next chapter, take a look back at the moments that made Pragyarambh 2.0 special.
+            </p>
+            <a
+              href="https://drive.google.com/drive/folders/1fRLdUS_gzmn_UrNLKnJbVIHnKxjI4BTN?usp=sharing"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-8 inline-flex items-center justify-center px-8 py-3 text-xs font-black tracking-[0.15em] text-[#442C1B] bg-[#CC9E4C] transition hover:bg-[#E0D0B6] uppercase"
+            >
+              View Pragyarambh 2.0 Highlights
+            </a>
+          </motion.div>
+        </div>
+      </section>
+
       {/* FAQ Section */}
       <section id="faq" className="relative bg-[#1A120D] px-4 py-20 sm:px-8 md:py-32">
         <div className="mx-auto max-w-5xl">
@@ -335,7 +376,7 @@ export default function PragyarambhLanding() {
             {[
               {
                 question: 'What is Pragyarambh 3.0?',
-                answer: 'Pragyarambh 3.0 is the freshers celebration for Cybersecurity & Digital Forensics, Data Science & Data Analytics, and Artificial Intelligence & Machine Learning.'
+                answer: 'Pragyarambh 3.0 is the freshers celebration for Cybersecurity and Digital Forensics, Data Science and Data Analysis, and Artificial Intelligence and Machine Learning.'
               },
               {
                 question: 'What is this year\'s theme?',
@@ -390,7 +431,7 @@ export default function PragyarambhLanding() {
             className="space-y-6"
           >
             <h2 className="text-5xl sm:text-6xl font-black leading-[1.1] text-[#E0D0B6] tracking-[-0.02em]">
-              Ready to join the celebration?
+              Your First Chapter Starts Here.
             </h2>
             <p className="text-base text-[#D4C5AC] font-light max-w-2xl mx-auto leading-relaxed">
               Start your campus journey with a freshers celebration built around music, connection and a new beginning.
@@ -418,7 +459,7 @@ export default function PragyarambhLanding() {
           <div className="grid gap-12 md:grid-cols-3 mb-12">
             <div className="space-y-2">
               <p className="text-xs font-black tracking-[0.3em] text-[#E0D0B6] uppercase">Pragyarambh</p>
-              <p className="text-xs text-[#8B9EA5] font-light">The Premium Freshers' Experience</p>
+              <p className="text-xs text-[#8B9EA5] font-light">Retro Roots. Fresh Energy.</p>
             </div>
             <div className="space-y-3 text-xs text-[#8B9EA5]">
               <p className="font-semibold text-[#E0D0B6] uppercase tracking-[0.08em]">Quick Links</p>
