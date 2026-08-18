@@ -144,10 +144,10 @@ export default function PragyarambhLanding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.2 }}
-              className="mx-auto w-full max-w-[min(100%,58rem)] whitespace-nowrap text-center text-[clamp(3.2rem,7.2vw,9.5rem)] font-black leading-[0.82] tracking-[-0.04em] text-[#E0D0B6]"
+              className="mx-auto w-full max-w-[min(100%,58rem)] whitespace-nowrap text-center text-[clamp(2.6rem,7vw,9.5rem)] font-black leading-[0.82] tracking-[-0.02em] text-[#E0D0B6] sm:tracking-[-0.04em]"
             >
-              <span className="block tracking-[0.04em]">PRAGYARAMBH</span>
-              <span className="mt-1 block tracking-[0.08em] text-[clamp(2.3rem,3.8vw,6.4rem)] text-[#CC9E4C] leading-[0.8]">3.0</span>
+              <span className="block tracking-[0.02em] sm:tracking-[0.04em]">PRAGYARAMBH</span>
+              <span className="mt-1 block tracking-[0.06em] text-[clamp(2.0rem,3.7vw,6.4rem)] text-[#CC9E4C] leading-[0.8] sm:tracking-[0.08em]">3.0</span>
             </motion.h1>
 
             {/* Subtitle */}
