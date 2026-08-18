@@ -50,12 +50,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DATABASE_URL: str = DEFAULT_DATABASE_URL
     SECRET_KEY: str | None = None
+    BREVO_API_KEY: str | None = None
+    MAIL_FROM: str | None = None
+    MAIL_FROM_NAME: str | None = None
+    # Legacy SMTP variables (no longer used; kept for reference)
     MAIL_HOST: str | None = None
     MAIL_PORT: int = 587
     MAIL_USERNAME: str | None = None
     MAIL_PASSWORD: str | None = None
-    MAIL_FROM: str | None = None
-    MAIL_FROM_NAME: str | None = None
     MAIL_USE_TLS: bool = True
     CORS_ALLOWED_ORIGINS: str | None = None
     TRUSTED_HOSTS: str | None = None
