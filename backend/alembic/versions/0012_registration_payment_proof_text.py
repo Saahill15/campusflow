@@ -1,6 +1,6 @@
 """Use TEXT for registration payment proof
 
-Revision ID: 0012_registration_payment_proof_text
+Revision ID: 0012_payment_proof_text
 Revises: 0011_add_fk_indexes
 Create Date: 2026-08-18
 """
@@ -8,7 +8,7 @@ Create Date: 2026-08-18
 from alembic import op
 import sqlalchemy as sa
 
-revision = '0012_registration_payment_proof_text'
+revision = '0012_payment_proof_text'
 down_revision = '0011_add_fk_indexes'
 branch_labels = None
 depends_on = None
