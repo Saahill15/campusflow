@@ -8,51 +8,89 @@ export default function RegisterPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#442C1B] via-[#6B2717] to-[#442C1B] text-[#E0D0B6]">
-      {/* Subtle background effect */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(204,158,76,0.08),_transparent_40%),radial-gradient(circle_at_bottom_left,_rgba(139,158,165,0.06),_transparent_50%)]" />
+    <div className="relative min-h-screen bg-[#2A1810]">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-radial-gradient(circle at top-right, [#CC9E4C]/4, transparent 50%)" />
 
       {/* Header */}
-      <header className="relative z-20 border-b border-[#CC9E4C]/20 bg-[#6B2717]/60 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-8 flex items-center justify-between">
+      <header className="relative z-50 px-4 py-6 md:px-8">
+        <div className="mx-auto max-w-7xl">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-sm font-semibold text-[#E0D0B6] transition hover:text-[#CC9E4C]"
+            className="flex items-center gap-2 text-xs font-black tracking-[0.15em] text-[#E0D0B6] hover:text-[#CC9E4C] transition uppercase"
           >
-            <ChevronLeft size={18} />
-            Back to Home
+            <ChevronLeft size={16} />
+            Back
           </button>
-          <div className="text-sm font-black tracking-[0.2em] text-[#E0D0B6]">PRAGYARAMBH 3.0</div>
-          <div className="w-20" />
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="relative z-10 mx-auto max-w-4xl px-4 py-12 sm:px-8 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-12"
-        >
-          <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C]/80">Registration</p>
-          <h1 className="mt-4 text-4xl sm:text-5xl font-black tracking-tight text-[#E0D0B6]">
-            Secure Your Spot
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-[#D4C5AC]">
-            Complete your registration to join Pragyarambh 3.0. All fields are required for verification.
-          </p>
-        </motion.div>
+      {/* Main Content - Two Column Layout */}
+      <main className="relative z-10 min-h-screen flex items-center">
+        <div className="mx-auto w-full max-w-7xl px-4 py-12 md:px-8">
+          <div className="grid gap-12 md:gap-20 lg:grid-cols-[1fr_1.2fr] items-start lg:items-center">
+            {/* Left Column - Info */}
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="space-y-10 text-[#E0D0B6]"
+            >
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black">Registration</p>
+                  <h1 className="text-5xl sm:text-6xl font-black leading-[1.1] tracking-[-0.02em]">
+                    Secure Your <br /> Spot
+                  </h1>
+                </div>
+                <p className="text-base text-[#D4C5AC] leading-relaxed font-light">
+                  Complete the form to join Pragyarambh 3.0. Every detail matters for verification.
+                </p>
+              </div>
 
-        <PragyarambhRegistrationCard />
-      </main>
+              {/* Key Info */}
+              <div className="space-y-6 pt-8 border-t border-[#CC9E4C]/20">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#8B9EA5] font-semibold mb-3">What You Get</p>
+                  <ul className="space-y-3 text-sm">
+                    <li className="flex items-start gap-3">
+                      <span className="text-[#CC9E4C] font-bold mt-1">✓</span>
+                      <span>Your unique registration number</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="text-[#CC9E4C] font-bold mt-1">✓</span>
+                      <span>Digital pass in your inbox</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="text-[#CC9E4C] font-bold mt-1">✓</span>
+                      <span>Event access and updates</span>
+                    </li>
+                  </ul>
+                </div>
 
-      {/* Footer Info */}
-      <footer className="relative z-10 border-t border-[#CC9E4C]/20 bg-[#6B2717]/40 backdrop-blur mt-12">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8 text-center text-sm text-[#8B9EA5]">
-          <p>Need help? Check the information section on the home page or contact the Pragyarambh team.</p>
+                <div className="pt-6 border-t border-[#CC9E4C]/20">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#8B9EA5] font-semibold mb-3">Payment Info</p>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="text-[#CC9E4C] font-bold">First Year:</span> <span className="text-[#E0D0B6]">Free</span></p>
+                    <p><span className="text-[#CC9E4C] font-bold">Second Year:</span> <span className="text-[#E0D0B6]">₹250</span></p>
+                    <p><span className="text-[#CC9E4C] font-bold">Third Year:</span> <span className="text-[#E0D0B6]">₹250</span></p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right Column - Form */}
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="w-full"
+            >
+              <PragyarambhRegistrationCard />
+            </motion.div>
+          </div>
         </div>
-      </footer>
+      </main>
     </div>
   )
 }
