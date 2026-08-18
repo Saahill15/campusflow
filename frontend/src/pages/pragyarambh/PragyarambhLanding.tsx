@@ -11,6 +11,14 @@ export default function PragyarambhLanding() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    document.title = 'Pragyarambh 3.0'
+
+    return () => {
+      document.title = 'Pragyarambh 3.0'
+    }
+  }, [])
+
+  useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
@@ -29,7 +37,7 @@ export default function PragyarambhLanding() {
   }, [isMuted])
 
   return (
-    <div className="min-h-screen bg-[#1A120D] text-[#E0D0B6]">
+    <div className="min-h-screen overflow-x-hidden bg-[#1A120D] text-[#E0D0B6]">
       {/* Navigation */}
       <header className="fixed inset-x-0 top-0 z-50 px-4 py-6 md:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -114,19 +122,19 @@ export default function PragyarambhLanding() {
         </div>
 
         {/* Hero Content */}
-        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-20 text-center">
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center overflow-hidden px-3 py-20 text-center sm:px-4 md:px-8">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1 }}
-            className="space-y-8 max-w-5xl"
+            className="w-full max-w-5xl space-y-5 px-1 sm:space-y-8 sm:px-0"
           >
             {/* Eyebrow text */}
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black"
+              className="text-[0.62rem] uppercase tracking-[0.24em] text-[#CC9E4C] font-black sm:text-[0.7rem]"
             >
               Retro Roots. Fresh Energy.
             </motion.div>
@@ -136,10 +144,10 @@ export default function PragyarambhLanding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.2 }}
-              className="text-6xl sm:text-7xl md:text-8xl font-black leading-[0.9] tracking-[-0.025em] text-[#E0D0B6]"
+              className="mx-auto w-full max-w-[min(100%,32rem)] text-[clamp(2.6rem,11vw,8rem)] font-black leading-[0.82] tracking-[-0.06em] text-[#E0D0B6] sm:max-w-[min(100%,38rem)]"
             >
-              PRAGYARAMBH <br />
-              <span className="text-[#CC9E4C]">3.0</span>
+              <span className="block break-words">PRAGYARAMBH</span>
+              <span className="mt-1 block text-[clamp(2.2rem,7vw,6rem)] text-[#CC9E4C] leading-[0.8]">3.0</span>
             </motion.h1>
 
             {/* Subtitle */}
@@ -147,7 +155,7 @@ export default function PragyarambhLanding() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-base sm:text-lg text-[#D4C5AC] max-w-2xl mx-auto leading-relaxed font-light"
+              className="mx-auto max-w-[min(100%,40rem)] text-sm leading-relaxed text-[#D4C5AC] sm:text-base md:text-lg"
             >
               Where retro nostalgia meets a new generation.
             </motion.p>
@@ -155,7 +163,7 @@ export default function PragyarambhLanding() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.35 }}
-              className="text-sm sm:text-base text-[#D4C5AC] max-w-3xl mx-auto leading-relaxed font-light"
+              className="mx-auto max-w-[min(100%,46rem)] text-xs leading-relaxed text-[#D4C5AC] sm:text-sm md:text-base"
             >
               Retro Fusion brings together the sounds, style and spirit of the past with the energy of a new generation — creating a freshers experience that feels familiar, yet completely new.
             </motion.p>
@@ -165,11 +173,11 @@ export default function PragyarambhLanding() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8"
+              className="flex w-full flex-col items-stretch justify-center gap-3 pt-6 sm:flex-row sm:items-center sm:gap-6 sm:pt-8"
             >
               <button
                 onClick={() => navigate('/register')}
-                className="px-12 py-4 text-xs font-black tracking-[0.15em] text-[#442C1B] bg-[#CC9E4C] hover:bg-[#E0D0B6] transition duration-300 uppercase shadow-2xl shadow-[#CC9E4C]/20"
+                className="w-full max-w-[18rem] self-center px-6 py-3 text-[0.65rem] font-black tracking-[0.15em] text-[#442C1B] bg-[#CC9E4C] hover:bg-[#E0D0B6] transition duration-300 uppercase shadow-2xl shadow-[#CC9E4C]/20 sm:w-auto sm:max-w-none sm:px-10 md:px-12"
               >
                 Register Now
               </button>
@@ -178,7 +186,7 @@ export default function PragyarambhLanding() {
                   const elem = document.getElementById('about')
                   elem?.scrollIntoView({ behavior: 'smooth' })
                 }}
-                className="px-12 py-4 text-xs font-black tracking-[0.15em] text-[#E0D0B6] border border-[#CC9E4C]/50 hover:border-[#CC9E4C] hover:text-[#CC9E4C] transition duration-300 uppercase"
+                className="w-full max-w-[18rem] self-center border border-[#CC9E4C]/50 px-6 py-3 text-[0.65rem] font-black tracking-[0.15em] text-[#E0D0B6] transition duration-300 hover:border-[#CC9E4C] hover:text-[#CC9E4C] uppercase sm:w-auto sm:max-w-none sm:px-10 md:px-12"
               >
                 Discover More
               </button>
