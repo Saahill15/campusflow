@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
 import { registerRefreshSessionHandler } from '../lib/api'
+import { resolveApiUrl } from '../utils/env'
 
 export type Role = 'student' | 'committee' | 'admin' | 'scanner' | 'guest'
 export type Permission = 'view_dashboard' | 'manage_students' | 'scan' | 'manage_system' | 'review_access'
@@ -69,7 +70,9 @@ const mapPermissions = (permissions: string[] | undefined | null): Permission[] 
 }
 
 const requestJson = async (url: string, init?: RequestInit) => {
-  const response = await fetch(url, {
+  const resolvedUrl = resolveApiUrl(url)
+
+  const response = await fetch(resolvedUrl, {
     credentials: 'same-origin',
     ...init,
     headers: {
