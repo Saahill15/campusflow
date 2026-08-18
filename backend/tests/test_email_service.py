@@ -5,7 +5,32 @@ import httpx
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from services.email_service import BrevoEmailService, ConsoleEmailService, get_email_service
+from services.email_service import (
+    BrevoEmailService,
+    ConsoleEmailService,
+    build_registration_approval_email,
+    build_registration_confirmation_email,
+    build_registration_rejection_email,
+    get_email_service,
+)
+
+
+def test_registration_email_templates_render_branded_html():
+    """Registration notifications should use the branded HTML format for the event."""
+    subject, confirmation_body = build_registration_confirmation_email('PRG-1001')
+    assert 'Pragyarambh 3.0' in subject
+    assert '<html' in confirmation_body.lower()
+    assert 'Registration Submitted Successfully' in confirmation_body
+
+    approval_subject, approval_body = build_registration_approval_email('PRG-1001', 'PASS-9001')
+    assert 'Pragyarambh 3.0' in approval_subject
+    assert '<html' in approval_body.lower()
+    assert 'Registration Approved' in approval_body
+
+    rejection_subject, rejection_body = build_registration_rejection_email('PRG-1001', 'Incomplete details')
+    assert 'Pragyarambh 3.0' in rejection_subject
+    assert '<html' in rejection_body.lower()
+    assert 'Registration Rejected' in rejection_body
 
 
 @pytest.mark.asyncio
