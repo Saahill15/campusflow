@@ -101,7 +101,13 @@ class BrevoEmailService(EmailService):
             detail_string,
         )
 
-    async def _send_message(self, to: str, subject: str, body: str) -> None:
+    async def _send_message(
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        attachments: list[EmailAttachment] | None = None,
+    ) -> None:
         self._log_brevo_start('configuration', api_endpoint=BREVO_API_URL)
         try:
             self._log_brevo_success('configuration', api_endpoint=BREVO_API_URL)
@@ -124,6 +130,16 @@ class BrevoEmailService(EmailService):
                 "subject": subject,
                 "htmlContent": body,
             }
+            if attachments:
+                import base64
+
+                request_payload["attachment"] = [
+                    {
+                        "name": filename,
+                        "content": base64.b64encode(content).decode('ascii'),
+                    }
+                    for filename, content, _content_type in attachments
+                ]
 
             self._log_brevo_start('request_start', recipient_email=self._mask_address(to))
             try:
@@ -176,10 +192,8 @@ class BrevoEmailService(EmailService):
             raise
 
     async def send_email(self, to: str, subject: str, body: str, attachments: list[EmailAttachment] | None = None) -> None:
-        # Note: Brevo HTTP API doesn't support attachments in this simple implementation
-        # For now, we ignore attachments. This could be extended in the future.
         try:
-            await self._send_message(to, subject, body)
+            await self._send_message(to, subject, body, attachments=attachments)
         except Exception as exc:
             self._log_brevo_failure('delivery', exc)
             raise
@@ -198,7 +212,7 @@ def get_email_service() -> EmailService:
 
 def _registration_email_template(title: str, subtitle: str, detail_rows: list[tuple[str, str]], accent: str = '#CC9E4C') -> str:
     rows_html = ''.join(
-        f"<tr><td style='padding: 10px 0; font-size: 13px; color: #d9c9ad; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;'>{label}</td><td style='padding: 10px 0; font-size: 15px; color: #f8f1e6; font-weight: 600;'>{value}</td></tr>"
+        f"<tr><td style='padding: 10px 0; font-size: 13px; color: #d9c9ad; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;'>{label}:</td><td style='padding: 10px 0; font-size: 15px; color: #f8f1e6; font-weight: 600;'>{value}</td></tr>"
         for label, value in detail_rows
     )
     return f"""

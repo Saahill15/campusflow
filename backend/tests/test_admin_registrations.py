@@ -9,7 +9,7 @@ from models.auth import Role, User
 from models.event import Event
 from models.pass_model import Pass, PassStatus
 from models.qr_code import QRCode, QRStatus
-from models.registration import Registration
+from models.registration import PaymentStatus, Registration
 from services import registration_service
 from services.auth_service import hash_password
 from services.email_service import get_email_service
@@ -170,10 +170,81 @@ async def test_admin_registrations_access_control(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_dashboard_summary_returns_overview_counts(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'dashboard-admin@example.com', 'StrongPass123', 'admin')
+        await _create_user_with_role(session, 'dashboard-student@example.com', 'StrongPass123', 'student')
+
+        pending = await _create_registration(session, 'PG26-D-000001', 'dashboard.pending@example.com', status='pending')
+        approved = await _create_registration(session, 'PG26-D-000002', 'dashboard.approved@example.com', status='approved')
+        approved.checked_in = True
+        approved.payment_status = PaymentStatus.Verified
+        approved.department = 'Artificial Intelligence and Machine Learning'
+        approved.academic_year = 'Second Year'
+        rejected = await _create_registration(session, 'PG26-D-000003', 'dashboard.rejected@example.com', status='rejected')
+        rejected.payment_status = PaymentStatus.Pending
+        rejected.department = 'Data Science and Data Analysis'
+        rejected.academic_year = 'Third Year'
+        pending.payment_status = PaymentStatus.NotRequired
+        pending.created_at = datetime(2026, 8, 12, 10, 0, tzinfo=timezone.utc)
+        approved.created_at = datetime(2026, 8, 12, 11, 0, tzinfo=timezone.utc)
+        rejected.created_at = datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc)
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'dashboard-admin@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.get(
+        '/api/v1/admin/dashboard/summary',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['total_registrations'] == 3
+    assert data['pending_approval'] == 1
+    assert data['approved'] == 1
+    assert data['rejected'] == 1
+    assert data['checked_in'] == 1
+    assert data['not_checked_in'] == 2
+    assert {item['label']: item['count'] for item in data['payment_overview']} == {
+        'Paid': 1,
+        'Pending': 1,
+        'Not Required': 1,
+    }
+    assert data['recent_registrations'][0]['registration_number'] == 'PG26-D-000003'
+    assert {item['label']: item['count'] for item in data['department_overview']} == {
+        'Cybersecurity and Digital Forensics': 1,
+        'Artificial Intelligence and Machine Learning': 1,
+        'Data Science and Data Analysis': 1,
+    }
+    assert {item['label']: item['count'] for item in data['academic_year_overview']} == {
+        'First Year': 1,
+        'Second Year': 1,
+        'Third Year': 1,
+    }
+
+    student_login = await client.post('/auth/login', json={'email': 'dashboard-student@example.com', 'password': 'StrongPass123'})
+    student_token = student_login.json()['data']['access_token']
+    forbidden = await client.get(
+        '/api/v1/admin/dashboard/summary',
+        headers={'Authorization': f'Bearer {student_token}'},
+    )
+    assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_admin_registration_detail_returns_full_fields(client):
     async with get_session() as session:
         await _create_user_with_role(session, 'admin3@example.com', 'StrongPass123', 'admin')
+        await _create_user_with_role(session, 'student.detail@example.com', 'StrongPass123', 'student')
         registration = await _create_registration(session, 'PG26-000002', 'student.two@example.com', status='approved')
+        registration.payment_status = PaymentStatus.Verified
+        registration.payment_mode = 'UPI'
+        registration.payment_amount = 250.0
+        registration.payment_reference = 'UPI-DETAIL-0002'
+        registration.payment_proof = 'data:image/png;base64,proof'
+        registration.checked_in = True
+        registration.checked_in_at = datetime(2026, 8, 19, 12, 0, tzinfo=timezone.utc)
         await session.commit()
 
     admin_login = await client.post('/auth/login', json={'email': 'admin3@example.com', 'password': 'StrongPass123'})
@@ -191,6 +262,81 @@ async def test_admin_registration_detail_returns_full_fields(client):
     assert data['phone'] == '9876543210'
     assert data['email'] == 'student.two@example.com'
     assert data['gender'] == 'Female'
+    assert data['payment_status'] == 'verified'
+    assert data['payment_mode'] == 'UPI'
+    assert data['payment_amount'] == 250.0
+    assert data['payment_reference'] == 'UPI-DETAIL-0002'
+    assert data['payment_proof'] == 'data:image/png;base64,proof'
+    assert data['checked_in'] is True
+    assert data['checked_in_at'] is not None
+
+    student_login = await client.post('/auth/login', json={'email': 'student.detail@example.com', 'password': 'StrongPass123'})
+    student_token = student_login.json()['data']['access_token']
+    forbidden = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {student_token}'})
+    assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_registration_list_supports_stage_1b_filters_and_pass_data(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage1b-admin@example.com', 'StrongPass123', 'admin')
+        await _create_user_with_role(session, 'stage1b-student@example.com', 'StrongPass123', 'student')
+
+        pending = await _create_registration(session, 'PG26-B-000001', 'stage1b.pending@example.com', status='pending')
+        pending.payment_status = PaymentStatus.Pending
+        pending.created_at = datetime(2026, 8, 11, 10, 0, tzinfo=timezone.utc)
+
+        approved = await _create_registration(session, 'PG26-B-000002', 'stage1b.approved@example.com', status='approved')
+        approved.department = 'Artificial Intelligence and Machine Learning'
+        approved.academic_year = 'Second Year'
+        approved.checked_in = True
+        approved.payment_status = PaymentStatus.Verified
+        approved.created_at = datetime(2026, 8, 12, 10, 0, tzinfo=timezone.utc)
+        pass_obj, _ = await _create_pass_and_qr(session, approved)
+        pass_obj.pass_number = 'PG26-B-PASS-000002'
+
+        rejected = await _create_registration(session, 'PG26-B-000003', 'stage1b.rejected@example.com', status='rejected')
+        rejected.department = 'Data Science and Data Analysis'
+        rejected.academic_year = 'Third Year'
+        rejected.payment_status = PaymentStatus.Rejected
+        rejected.created_at = datetime(2026, 8, 13, 10, 0, tzinfo=timezone.utc)
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'stage1b-admin@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    headers = {'Authorization': f'Bearer {admin_token}'}
+
+    base = await client.get('/api/v1/admin/registrations?per_page=2', headers=headers)
+    assert base.status_code == 200
+    assert base.json()['meta'] == {'total': 3, 'page': 1, 'per_page': 2}
+    assert base.json()['items'][0]['registration_number'] == 'PG26-B-000003'
+    assert base.json()['filters']['payment_statuses'] == ['not_required', 'pending', 'verified', 'rejected']
+
+    pass_search = await client.get('/api/v1/admin/registrations?search=PG26-B-PASS-000002', headers=headers)
+    assert [item['registration_number'] for item in pass_search.json()['items']] == ['PG26-B-000002']
+    pass_item = pass_search.json()['items'][0]
+    assert pass_item['pass_number'] == 'PG26-B-PASS-000002'
+    assert pass_item['pass_status'] == 'issued'
+    assert pass_item['checked_in'] is True
+
+    filter_cases = [
+        ('status=approved', ['PG26-B-000002']),
+        ('payment_status=pending', ['PG26-B-000001']),
+        ('department=Data%20Science%20and%20Data%20Analysis', ['PG26-B-000003']),
+        ('academic_year=Second%20Year', ['PG26-B-000002']),
+        ('checked_in=true', ['PG26-B-000002']),
+        ('checked_in=false', ['PG26-B-000003', 'PG26-B-000001']),
+        ('date_from=2026-08-13&date_to=2026-08-13', ['PG26-B-000003']),
+    ]
+    for query, registration_numbers in filter_cases:
+        response = await client.get(f'/api/v1/admin/registrations?{query}', headers=headers)
+        assert response.status_code == 200
+        assert [item['registration_number'] for item in response.json()['items']] == registration_numbers
+
+    student_login = await client.post('/auth/login', json={'email': 'stage1b-student@example.com', 'password': 'StrongPass123'})
+    student_token = student_login.json()['data']['access_token']
+    forbidden = await client.get('/api/v1/admin/registrations?payment_status=verified', headers={'Authorization': f'Bearer {student_token}'})
+    assert forbidden.status_code == 403
 
 
 @pytest.mark.asyncio
@@ -459,6 +605,69 @@ async def test_admin_get_registration_pass_returns_404_when_pass_missing(client)
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_can_download_existing_pass_without_creating_another(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'download-admin@example.com', 'StrongPass123', 'admin')
+        await _create_user_with_role(session, 'download-student@example.com', 'StrongPass123', 'student')
+        registration = await _create_registration(session, 'PG26-DL-000001', 'download.student@example.com', status='approved')
+        pass_obj, _ = await _create_pass_and_qr(session, registration)
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'download-admin@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    headers = {'Authorization': f'Bearer {admin_token}'}
+    response = await client.get(f'/api/v1/admin/registrations/{registration.id}/pass/download', headers=headers)
+
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'image/png'
+    assert 'Pragyarambh_Pass.png' in response.headers['content-disposition']
+    assert response.content.startswith(b'\x89PNG')
+
+    async with get_session() as session:
+        passes = (await session.execute(select(Pass).where(Pass.registration_id == registration.id))).scalars().all()
+        qrs = (await session.execute(select(QRCode).where(QRCode.pass_id == pass_obj.id))).scalars().all()
+    assert len(passes) == 1
+    assert len(qrs) == 1
+
+    student_login = await client.post('/auth/login', json={'email': 'download-student@example.com', 'password': 'StrongPass123'})
+    student_token = student_login.json()['data']['access_token']
+    forbidden = await client.get(f'/api/v1/admin/registrations/{registration.id}/pass/download', headers={'Authorization': f'Bearer {student_token}'})
+    assert forbidden.status_code == 403
+    unauthenticated = await client.get(f'/api/v1/admin/registrations/{registration.id}/pass/download')
+    assert unauthenticated.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_admin_can_resend_approval_email_using_existing_pass_and_qr(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'resend-admin@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-RESEND-000001', 'resend.student@example.com', status='approved')
+        pass_obj, qr_obj = await _create_pass_and_qr(session, registration)
+        await session.commit()
+
+    admin_login = await client.post('/auth/login', json={'email': 'resend-admin@example.com', 'password': 'StrongPass123'})
+    admin_token = admin_login.json()['data']['access_token']
+    response = await client.post(
+        f'/api/v1/admin/registrations/{registration.id}/resend-approval-email',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['email_sent'] is True
+    assert data['pass_number'] == pass_obj.pass_number
+    assert len(email_service_override.calls) == 1
+    assert email_service_override.calls[0]['attachments'][0][0] == 'Pragyarambh_Pass.png'
+    assert email_service_override.calls[0]['attachments'][0][2] == 'image/png'
+
+    async with get_session() as session:
+        passes = (await session.execute(select(Pass).where(Pass.registration_id == registration.id))).scalars().all()
+        qrs = (await session.execute(select(QRCode).where(QRCode.pass_id == qr_obj.pass_id))).scalars().all()
+    assert len(passes) == 1
+    assert len(qrs) == 1
 
 
 @pytest.mark.asyncio

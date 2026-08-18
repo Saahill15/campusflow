@@ -44,7 +44,7 @@ async def test_registration_number_collision_retries(client, monkeypatch):
     payload = {
         'first_name': 'New',
         'last_name': 'User',
-        'department': 'Dept',
+        'department': 'Cybersecurity and Digital Forensics',
         'academic_year': 'First Year',
         'roll_number': 'COLLIDE2',
         'phone': '9999999000',

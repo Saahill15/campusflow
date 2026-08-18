@@ -18,6 +18,10 @@ class AdminRegistrationItem(BaseModel):
     email: Optional[str] = None
     gender: Optional[str] = None
     status: str
+    payment_status: Optional[str] = None
+    pass_number: Optional[str] = None
+    pass_status: Optional[str] = None
+    checked_in: bool = False
     created_at: datetime
     approved_by: Optional[int] = None
     approved_at: Optional[datetime] = None
@@ -40,9 +44,42 @@ class AdminRegistrationDetail(AdminRegistrationItem):
     deleted_at: Optional[datetime] = None
 
 
+class AdminRegistrationFilterOptions(BaseModel):
+    departments: list[str] = []
+    academic_years: list[str] = []
+    payment_statuses: list[str] = []
+
+
 class AdminRegistrationListResponse(BaseModel):
     items: list[AdminRegistrationItem]
     meta: PaginationMeta
+    filters: Optional[AdminRegistrationFilterOptions] = None
+
+
+class AdminDashboardRecentRegistration(BaseModel):
+    registration_number: Optional[str] = None
+    student_name: str
+    department: Optional[str] = None
+    status: str
+    created_at: datetime
+
+
+class AdminDashboardCount(BaseModel):
+    label: str
+    count: int
+
+
+class AdminDashboardResponse(BaseModel):
+    total_registrations: int
+    pending_approval: int
+    approved: int
+    rejected: int
+    checked_in: int
+    not_checked_in: int
+    recent_registrations: list[AdminDashboardRecentRegistration]
+    department_overview: list[AdminDashboardCount]
+    academic_year_overview: list[AdminDashboardCount]
+    payment_overview: list[AdminDashboardCount]
 
 
 class AdminRegistrationRejectionRequest(BaseModel):

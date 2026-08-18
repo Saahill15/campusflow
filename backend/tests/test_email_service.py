@@ -59,7 +59,16 @@ async def test_brevo_success_201_with_message_id(caplog):
 
             mock_client_class.return_value = mock_client
 
-            await service.send_email('recipient@example.com', 'Test Subject', 'Test Body')
+            await service.send_email(
+                'recipient@example.com',
+                'Test Subject',
+                'Test Body',
+                attachments=[('pass.png', b'png-bytes', 'image/png')],
+            )
+
+            request_payload = mock_client.post.call_args.kwargs['json']
+            assert request_payload['attachment'][0]['name'] == 'pass.png'
+            assert request_payload['attachment'][0]['content']
 
     messages = [record.getMessage() for record in caplog.records]
     assert any('stage=configuration action=success' in msg for msg in messages)
