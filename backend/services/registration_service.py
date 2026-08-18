@@ -38,10 +38,32 @@ class RegistrationService:
         await self.session.commit()
         return r
 
+    @staticmethod
+    def _normalize_name(value: str) -> str:
+        if not value:
+            return ''
+        return ' '.join(part[:1].upper() + part[1:].lower() for part in value.strip().split() if part)
+
     async def create_registration(self, payload: dict, event_id: str) -> Registration:
+        normalized_first_name = self._normalize_name(payload.get('first_name') or '')
+        normalized_last_name = self._normalize_name(payload.get('last_name') or '')
         normalized_email = (payload.get('email') or '').strip().lower()
         normalized_roll = (payload.get('roll_number') or '').strip().upper()
+        department = (payload.get('department') or '').strip()
         academic_year = (payload.get('academic_year') or '').strip()
+        gender = (payload.get('gender') or '').strip()
+
+        allowed_departments = {
+            'Cybersecurity and Digital Forensics',
+            'Data Science and Data Analysis',
+            'Artificial Intelligence and Machine Learning',
+        }
+        if department not in allowed_departments:
+            raise ValueError('Department is invalid')
+        if academic_year not in {'First Year', 'Second Year', 'Third Year'}:
+            raise ValueError('Academic year is invalid')
+        if gender not in {'Male', 'Female', 'Other'}:
+            raise ValueError('Gender is invalid')
 
         duplicate_statuses = [
             RegistrationStatus.Pending,
@@ -93,14 +115,14 @@ class RegistrationService:
         reg = Registration(
             event_id=event_id,
             user_id=None,
-            first_name=(payload.get('first_name') or '').strip(),
-            last_name=(payload.get('last_name') or '').strip(),
-            department=(payload.get('department') or '').strip(),
+            first_name=normalized_first_name,
+            last_name=normalized_last_name,
+            department=department,
             academic_year=academic_year,
             roll_number=normalized_roll,
             phone=(payload.get('phone') or '').strip(),
             email=normalized_email,
-            gender=(payload.get('gender') or '').strip(),
+            gender=gender,
             status=RegistrationStatus.Pending,
             payment_status=payment_status,
             payment_mode=payment_mode,

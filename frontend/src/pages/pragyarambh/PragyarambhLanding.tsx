@@ -209,13 +209,15 @@ export default function PragyarambhLanding() {
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black">About</p>
                 <h2 className="text-5xl sm:text-6xl font-black leading-[1.1] text-[#E0D0B6] tracking-[-0.02em]">
-                  Where Three Departments Meet,
+                  Three Departments.
                   <br />
-                  Freshers Begin.
+                  One Freshers Era.
+                  <br />
+                  Zero Boring Introductions.
                 </h2>
               </div>
               <p className="text-base text-[#D4C5AC] leading-relaxed font-light max-w-lg">
-                Pragyarambh 3.0 brings together the freshers of Cybersecurity & Digital Forensics, Data Science & Data Analytics, and Artificial Intelligence & Machine Learning for an experience built around music, creativity, connection and the spirit of a new beginning.
+                Cybersecurity, Data Science and AI & ML — three departments, one freshers experience, and plenty of new people to pretend you already know.
               </p>
             </motion.div>
 
@@ -346,6 +348,10 @@ export default function PragyarambhLanding() {
               {
                 question: 'How do I register?',
                 answer: 'Complete the registration form through the Register Now button. Follow the instructions provided during registration.'
+              },
+              {
+                question: 'How will I receive my pass?',
+                answer: 'Your pass will be sent to the email address provided during registration. Keep that email accessible after registering. No Pass, No Entry.'
               },
               {
                 question: 'Is registration required?',

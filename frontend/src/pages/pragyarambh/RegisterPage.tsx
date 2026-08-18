@@ -68,14 +68,6 @@ export default function RegisterPage() {
                   </ul>
                 </div>
 
-                <div className="pt-6 border-t border-[#CC9E4C]/20">
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#8B9EA5] font-semibold mb-3">Payment Info</p>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="text-[#CC9E4C] font-bold">First Year:</span> <span className="text-[#E0D0B6]">Free</span></p>
-                    <p><span className="text-[#CC9E4C] font-bold">Second Year:</span> <span className="text-[#E0D0B6]">₹250</span></p>
-                    <p><span className="text-[#CC9E4C] font-bold">Third Year:</span> <span className="text-[#E0D0B6]">₹250</span></p>
-                  </div>
-                </div>
               </div>
             </motion.div>
 

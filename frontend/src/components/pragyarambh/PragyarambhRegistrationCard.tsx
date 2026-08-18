@@ -4,15 +4,24 @@ import { CheckCircle2, ChevronRight } from 'lucide-react'
 import axios from 'axios'
 import api from '../../services/api/axios'
 
+const normalizeName = (value: string) =>
+  value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+
 export default function PragyarambhRegistrationCard() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [department, setDepartment] = useState('Cybersecurity and Digital Forensics')
-  const [year, setYear] = useState('First Year')
+  const [department, setDepartment] = useState('')
+  const [year, setYear] = useState('')
   const [rollSuffix, setRollSuffix] = useState('')
   const [contactNumber, setContactNumber] = useState('')
   const [email, setEmail] = useState('')
-  const [gender, setGender] = useState('Male')
+  const [gender, setGender] = useState('')
   const [paymentMode, setPaymentMode] = useState<'upi' | 'cash'>('upi')
   const [paymentReference, setPaymentReference] = useState('')
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
@@ -150,7 +159,8 @@ export default function PragyarambhRegistrationCard() {
                 <input
                   value={firstName}
                   onChange={(e) => {
-                    setFirstName(e.target.value)
+                    const nextValue = normalizeName(e.target.value)
+                    setFirstName(nextValue)
                     if (validationErrors.firstName) setValidationErrors((c) => ({ ...c, firstName: '' }))
                   }}
                   className="bg-transparent border-b border-[#CC9E4C]/30 px-0 py-2 text-[#E0D0B6] outline-none transition focus:border-[#CC9E4C] placeholder:text-[#8B9EA5]"
@@ -164,7 +174,8 @@ export default function PragyarambhRegistrationCard() {
                 <input
                   value={lastName}
                   onChange={(e) => {
-                    setLastName(e.target.value)
+                    const nextValue = normalizeName(e.target.value)
+                    setLastName(nextValue)
                     if (validationErrors.lastName) setValidationErrors((c) => ({ ...c, lastName: '' }))
                   }}
                   className="bg-transparent border-b border-[#CC9E4C]/30 px-0 py-2 text-[#E0D0B6] outline-none transition focus:border-[#CC9E4C] placeholder:text-[#8B9EA5]"
@@ -184,6 +195,7 @@ export default function PragyarambhRegistrationCard() {
                 }}
                 className="bg-transparent border-b border-[#CC9E4C]/30 px-0 py-2 text-[#E0D0B6] outline-none transition focus:border-[#CC9E4C]"
               >
+                <option value="" className="bg-[#442C1B]">Select Gender</option>
                 <option value="Male" className="bg-[#442C1B]">Male</option>
                 <option value="Female" className="bg-[#442C1B]">Female</option>
                 <option value="Other" className="bg-[#442C1B]">Other</option>
@@ -207,9 +219,10 @@ export default function PragyarambhRegistrationCard() {
                   }}
                   className="bg-transparent border-b border-[#CC9E4C]/30 px-0 py-2 text-[#E0D0B6] outline-none transition focus:border-[#CC9E4C]"
                 >
-                  <option value="Cybersecurity and Digital Forensics" className="bg-[#442C1B]">Cybersecurity</option>
-                  <option value="Data Science and Data Analysis" className="bg-[#442C1B]">Data Science</option>
-                  <option value="Artificial Intelligence and Machine Learning" className="bg-[#442C1B]">AI & ML</option>
+                  <option value="" className="bg-[#442C1B]">Select Department</option>
+                  <option value="Cybersecurity and Digital Forensics" className="bg-[#442C1B]">Cybersecurity and Digital Forensics</option>
+                  <option value="Data Science and Data Analysis" className="bg-[#442C1B]">Data Science and Data Analysis</option>
+                  <option value="Artificial Intelligence and Machine Learning" className="bg-[#442C1B]">Artificial Intelligence and Machine Learning</option>
                 </select>
                 {validationErrors.department && <p className="text-xs text-[#E09999]">{validationErrors.department}</p>}
               </label>
@@ -224,6 +237,7 @@ export default function PragyarambhRegistrationCard() {
                   }}
                   className="bg-transparent border-b border-[#CC9E4C]/30 px-0 py-2 text-[#E0D0B6] outline-none transition focus:border-[#CC9E4C]"
                 >
+                  <option value="" className="bg-[#442C1B]">Select Year</option>
                   <option value="First Year" className="bg-[#442C1B]">First Year</option>
                   <option value="Second Year" className="bg-[#442C1B]">Second Year</option>
                   <option value="Third Year" className="bg-[#442C1B]">Third Year</option>
@@ -278,7 +292,8 @@ export default function PragyarambhRegistrationCard() {
                 <input
                   value={email}
                   onChange={(e) => {
-                    setEmail(e.target.value)
+                    const nextValue = e.target.value.trim().toLowerCase()
+                    setEmail(nextValue)
                     if (validationErrors.email) setValidationErrors((c) => ({ ...c, email: '' }))
                   }}
                   type="email"

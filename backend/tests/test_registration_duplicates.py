@@ -13,7 +13,7 @@ async def test_new_email_and_new_roll_succeeds(client):
     payload = {
         "first_name": "Test",
         "last_name": "User",
-        "department": "Dept",
+        "department": "Cybersecurity and Digital Forensics",
         "academic_year": "First Year",
         "roll_number": "UNQ1001",
         "phone": "9999999999",
@@ -29,7 +29,7 @@ async def test_same_email_different_roll_rejected(client):
     payload1 = {
         "first_name": "A",
         "last_name": "B",
-        "department": "Dept",
+        "department": "Cybersecurity and Digital Forensics",
         "academic_year": "First Year",
         "roll_number": "SAMEEMAIL1",
         "phone": "9999999998",
@@ -50,7 +50,7 @@ async def test_different_email_same_roll_rejected(client):
     payload1 = {
         "first_name": "C",
         "last_name": "D",
-        "department": "Dept",
+        "department": "Cybersecurity and Digital Forensics",
         "academic_year": "First Year",
         "roll_number": "SAMEROLL1",
         "phone": "9999999997",
@@ -71,7 +71,7 @@ async def test_different_email_and_different_roll_succeeds(client):
     payload1 = {
         "first_name": "E",
         "last_name": "F",
-        "department": "Dept",
+        "department": "Cybersecurity and Digital Forensics",
         "academic_year": "First Year",
         "roll_number": "DIFF1",
         "phone": "9999999996",
@@ -81,7 +81,7 @@ async def test_different_email_and_different_roll_succeeds(client):
     payload2 = {
         "first_name": "G",
         "last_name": "H",
-        "department": "Dept",
+        "department": "Cybersecurity and Digital Forensics",
         "academic_year": "First Year",
         "roll_number": "DIFF2",
         "phone": "9999999995",
@@ -120,7 +120,7 @@ async def test_duplicate_scoped_to_pragyarambh_event(client):
     payload = {
         "first_name": "Scoped",
         "last_name": "User",
-        "department": "Dept",
+        "department": "Cybersecurity and Digital Forensics",
         "academic_year": "First Year",
         "roll_number": other_roll,
         "phone": "9999999900",
