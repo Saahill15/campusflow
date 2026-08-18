@@ -109,6 +109,14 @@ const readStoredToken = () => {
   return stored?.token ?? null
 }
 
+const getResponseData = <T,>(payload: T | { data?: T } | null | undefined): T | null => {
+  if (!payload) return null
+  if (typeof payload === 'object' && 'data' in payload && payload.data !== undefined) {
+    return payload.data as T
+  }
+  return payload as T
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const buildUser = (me: { id: string | number; email: string; roles?: string[]; permissions?: string[] }): User => ({
@@ -169,7 +177,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         Authorization: `Bearer ${accessToken}`,
       },
     })
-    return payload.data as { id: string | number; email: string; roles?: string[]; permissions?: string[] }
+
+    const me = getResponseData<{
+      id: string | number
+      email: string
+      roles?: string[]
+      permissions?: string[]
+    } | null>(payload)
+
+    if (!me) {
+      throw new Error('User profile response was empty')
+    }
+
+    return me
   }, [])
 
   const login = useCallback(async (credentials: Credentials | LegacyLoginPayload, remember = true) => {
@@ -191,7 +211,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       body: JSON.stringify(credentials),
     })
 
-    const authData = loginPayload.data as { access_token: string; refresh_token: string }
+    const authData = getResponseData<{ access_token: string; refresh_token: string } | null>(loginPayload)
+    if (!authData) {
+      throw new Error('Login response was empty')
+    }
+
     const me = await fetchMe(authData.access_token)
     const session = buildSession(me, authData.access_token, authData.refresh_token, remember)
     setSession(session, remember)
@@ -216,7 +240,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         method: 'POST',
         body: JSON.stringify({ refresh_token: currentRefreshToken }),
       })
-      const authData = refreshed.data as { access_token: string; refresh_token: string }
+      const authData = getResponseData<{ access_token: string; refresh_token: string } | null>(refreshed)
+      if (!authData) {
+        throw new Error('Refresh response was empty')
+      }
       const me = await fetchMe(authData.access_token)
       const session = buildSession(me, authData.access_token, authData.refresh_token, stored?.remember ?? true)
       setSession(session, session.remember)
