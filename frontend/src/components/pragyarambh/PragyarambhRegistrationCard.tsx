@@ -323,7 +323,7 @@ export default function PragyarambhRegistrationCard() {
               </label>
 
               {paymentMode === 'upi' && (
-                <div className="space-y-6 bg-[#6B2717]/20 border border-[#CC9E4C]/20 p-6 rounded-lg">
+                <div className="space-y-6 bg-[#1A120D]/75 border border-[#CC9E4C]/20 p-6 rounded-lg">
                   <div className="space-y-3">
                     <p className="text-xs uppercase tracking-[0.08em] text-[#8B9EA5] font-semibold">Scan QR to Pay ₹250</p>
                     <div className="bg-[#E0D0B6] p-4 rounded-lg flex items-center justify-center">
@@ -443,7 +443,7 @@ export default function PragyarambhRegistrationCard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="bg-[#6B2717]/40 border border-[#CC9E4C]/30 p-6 rounded-lg space-y-2"
+            className="bg-[#1A120D]/75 border border-[#CC9E4C]/30 p-6 rounded-lg space-y-2"
           >
             <p className="text-xs uppercase tracking-[0.1em] text-[#8B9EA5] font-semibold">Your Registration Number</p>
             <p className="text-3xl font-mono font-black text-[#CC9E4C]">{registrationNumber}</p>
@@ -454,7 +454,7 @@ export default function PragyarambhRegistrationCard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="bg-[#6B2717]/30 border border-[#CC9E4C]/20 p-6 rounded-lg space-y-4 text-left"
+            className="bg-[#1A120D]/75 border border-[#CC9E4C]/20 p-6 rounded-lg space-y-4 text-left"
           >
             <h3 className="font-bold text-[#E0D0B6] uppercase text-xs tracking-[0.1em]">What Happens Next</h3>
             <ul className="space-y-3 text-sm">
@@ -478,7 +478,7 @@ export default function PragyarambhRegistrationCard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="bg-[#CC9E4C]/10 border border-[#CC9E4C]/30 p-4 rounded-lg text-sm text-[#D4C5AC]"
+              className="bg-[#1A120D]/80 border border-[#CC9E4C]/30 p-4 rounded-lg text-sm text-[#D4C5AC]"
             >
               <p>
                 <span className="font-bold text-[#E0D0B6]">Payment Verification:</span> Our team will review your proof. You'll receive a confirmation once verified.

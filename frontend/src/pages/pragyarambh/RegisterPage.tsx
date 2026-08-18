@@ -8,7 +8,7 @@ export default function RegisterPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="relative min-h-screen bg-[#2A1810]">
+    <div className="relative min-h-screen bg-[#1A120D]">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-radial-gradient(circle at top-right, [#CC9E4C]/4, transparent 50%)" />
 

@@ -26,7 +26,7 @@ export default function PragyarambhLanding() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#2A1810] text-[#E0D0B6]">
+    <div className="min-h-screen bg-[#1A120D] text-[#E0D0B6]">
       {/* Navigation */}
       <header className="fixed inset-x-0 top-0 z-50 px-4 py-6 md:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -105,9 +105,9 @@ export default function PragyarambhLanding() {
             <source src="/video.mp4" type="video/mp4" />
           </video>
           {/* Elegant dark overlay with subtle color */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2A1810]/60 via-[#2A1810]/70 to-[#2A1810]/85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1A120D]/70 via-[#1A120D]/80 to-[#1A120D]/90" />
           <div className="absolute inset-0 bg-radial-gradient(circle at top-right, [#CC9E4C]/5, transparent 50%)" />
-          {videoError && <div className="absolute inset-0 bg-[#2A1810]" />}
+          {videoError && <div className="absolute inset-0 bg-[#1A120D]" />}
         </div>
 
         {/* Hero Content */}
@@ -187,7 +187,7 @@ export default function PragyarambhLanding() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="relative bg-[#2A1810] px-4 py-20 sm:px-8 md:py-32">
+      <section id="about" className="relative bg-[#1A120D] px-4 py-20 sm:px-8 md:py-32">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 md:grid-cols-2 md:gap-16 items-center">
             {/* Left: Headline */}
@@ -236,7 +236,7 @@ export default function PragyarambhLanding() {
       </section>
 
       {/* Experience Section */}
-      <section id="experience" className="relative bg-[#442C1B] px-4 py-20 sm:px-8 md:py-32">
+      <section id="experience" className="relative bg-[#201611] px-4 py-20 sm:px-8 md:py-32">
         <div className="mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -305,7 +305,7 @@ export default function PragyarambhLanding() {
       </section>
 
       {/* Details Section */}
-      <section id="details" className="relative bg-[#2A1810] px-4 py-20 sm:px-8 md:py-32">
+      <section id="details" className="relative bg-[#1A120D] px-4 py-20 sm:px-8 md:py-32">
         <div className="mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -375,7 +375,7 @@ export default function PragyarambhLanding() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="relative bg-[#442C1B] px-4 py-20 sm:px-8 md:py-32 overflow-hidden">
+      <section className="relative bg-[#1C1412] px-4 py-20 sm:px-8 md:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-radial-gradient(circle at bottom-left, [#CC9E4C]/3, transparent 60%)" />
         <div className="mx-auto max-w-4xl relative z-10 text-center space-y-12">
           <motion.div
@@ -409,7 +409,7 @@ export default function PragyarambhLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#1F140A] border-t border-[#CC9E4C]/20 px-4 py-16 sm:px-8">
+      <footer className="bg-[#120D0A] border-t border-[#CC9E4C]/20 px-4 py-16 sm:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-12 md:grid-cols-3 mb-12">
             <div className="space-y-2">
