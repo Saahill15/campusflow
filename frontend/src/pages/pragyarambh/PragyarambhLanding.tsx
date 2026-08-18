@@ -39,7 +39,7 @@ export default function PragyarambhLanding() {
           <nav className="hidden items-center gap-12 text-xs text-[#E0D0B6] md:flex uppercase tracking-[0.15em] font-medium">
             <a href="#about" className="transition duration-300 hover:text-[#CC9E4C]">About</a>
             <a href="#experience" className="transition duration-300 hover:text-[#CC9E4C]">Experience</a>
-            <a href="#details" className="transition duration-300 hover:text-[#CC9E4C]">Details</a>
+            <a href="#faq" className="transition duration-300 hover:text-[#CC9E4C]">FAQ</a>
           </nav>
           <div className="flex items-center gap-4">
             <button
@@ -72,8 +72,8 @@ export default function PragyarambhLanding() {
               <a href="#experience" className="transition hover:text-[#CC9E4C]" onClick={() => setMenuOpen(false)}>
                 Experience
               </a>
-              <a href="#details" className="transition hover:text-[#CC9E4C]" onClick={() => setMenuOpen(false)}>
-                Details
+              <a href="#faq" className="transition hover:text-[#CC9E4C]" onClick={() => setMenuOpen(false)}>
+                FAQ
               </a>
               <button
                 onClick={() => {
@@ -146,7 +146,15 @@ export default function PragyarambhLanding() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="text-base sm:text-lg text-[#D4C5AC] max-w-2xl mx-auto leading-relaxed font-light"
             >
-              Experience cinematic energy, premium vibes, and unforgettable moments. Your campus celebration, reimagined.
+              Where retro nostalgia meets a new generation.
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.35 }}
+              className="text-sm sm:text-base text-[#D4C5AC] max-w-3xl mx-auto leading-relaxed font-light"
+            >
+              Retro Fusion brings together the sounds, style and spirit of the past with the energy of a new generation — creating a freshers experience that feels familiar, yet completely new.
             </motion.p>
 
             {/* CTA Section */}
@@ -201,13 +209,13 @@ export default function PragyarambhLanding() {
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black">About</p>
                 <h2 className="text-5xl sm:text-6xl font-black leading-[1.1] text-[#E0D0B6] tracking-[-0.02em]">
-                  Your College Moment,
+                  Where Three Departments Meet,
                   <br />
-                  Elevated.
+                  Freshers Begin.
                 </h2>
               </div>
               <p className="text-base text-[#D4C5AC] leading-relaxed font-light max-w-lg">
-                Pragyarambh isn't just another event. It's a carefully curated night designed to celebrate your arrival at campus. From immersive visuals to premium experiences, every detail is crafted to make you feel the energy, the community, and the magic.
+                Pragyarambh 3.0 brings together the freshers of Cybersecurity & Digital Forensics, Data Science & Data Analytics, and Artificial Intelligence & Machine Learning for an experience built around music, creativity, connection and the spirit of a new beginning.
               </p>
             </motion.div>
 
@@ -220,14 +228,15 @@ export default function PragyarambhLanding() {
               className="grid grid-cols-2 gap-8"
             >
               {[
-                { number: '4+', label: 'Hours of Premium Entertainment' },
-                { number: '1000+', label: 'Freshers Celebrating Together' },
-                { number: '100%', label: 'Unforgettable Moments' },
-                { number: '1', label: 'Night You\'ll Never Forget' },
+                { number: '3', label: 'Departments', detail: 'Cybersecurity • Data Science • AI & ML' },
+                { number: '1', label: 'Shared Beginning', detail: 'New faces, new connections' },
+                { number: 'Freshers', label: 'Edition', detail: 'Made for the newest members of our campus' },
+                { number: 'Retro', label: 'Fusion', detail: 'A blend of nostalgia and modern energy' },
               ].map((item, idx) => (
-                <div key={idx} className="space-y-2">
+                <div key={idx} className="space-y-2 border border-[#CC9E4C]/10 bg-[#201611]/60 p-4 rounded-lg">
                   <div className="text-3xl sm:text-4xl font-black text-[#CC9E4C]">{item.number}</div>
                   <p className="text-xs uppercase tracking-[0.08em] text-[#8B9EA5] font-semibold">{item.label}</p>
+                  <p className="text-xs text-[#D4C5AC] font-light leading-relaxed">{item.detail}</p>
                 </div>
               ))}
             </motion.div>
@@ -245,9 +254,9 @@ export default function PragyarambhLanding() {
             transition={{ duration: 0.8 }}
             className="mb-16 md:mb-24"
           >
-            <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black mb-3">The Experience</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black mb-3">Retro Fusion</p>
             <h2 className="text-5xl sm:text-6xl font-black leading-[1.1] text-[#E0D0B6] tracking-[-0.02em]">
-              Four Dimensions of Celebration
+              Where retro nostalgia meets a new generation.
             </h2>
           </motion.div>
 
@@ -262,9 +271,9 @@ export default function PragyarambhLanding() {
               className="group md:grid md:grid-cols-3 gap-8 items-center"
             >
               <div className="md:col-span-2 space-y-4">
-                <h3 className="text-2xl sm:text-3xl font-bold text-[#E0D0B6]">Live Music & Cinematic Visuals</h3>
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#E0D0B6]">Music, Nostalgia & Creative Energy</h3>
                 <p className="text-[#D4C5AC] leading-relaxed font-light">
-                  High-energy performances paired with projection mapping and cinematic lighting. A fully immersive audio-visual experience designed to set the mood for the entire night.
+                  Retro Fusion brings together the sounds, style and spirit of the past with the energy of a new generation — creating a freshers experience that feels familiar, yet completely new.
                 </p>
               </div>
               <div className="h-48 md:h-full bg-gradient-to-br from-[#6B2717]/40 to-[#CC9E4C]/10 border border-[#CC9E4C]/20 flex items-center justify-center">
@@ -281,9 +290,9 @@ export default function PragyarambhLanding() {
                 transition={{ duration: 0.8, delay: 0.1 }}
                 className="space-y-4"
               >
-                <h3 className="text-xl sm:text-2xl font-bold text-[#E0D0B6]">Premium Food & Vibes</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-[#E0D0B6]">Campus Connections</h3>
                 <p className="text-[#D4C5AC] leading-relaxed font-light">
-                  Curated food stalls, chill zones, and spaces designed for connection. Every corner is crafted to let you relax, celebrate, and build lasting memories.
+                  Meet new people, share the excitement and build fresh memories together as the newest faces on campus come together through music, creativity and joy.
                 </p>
               </motion.div>
 
@@ -294,9 +303,9 @@ export default function PragyarambhLanding() {
                 transition={{ duration: 0.8, delay: 0.15 }}
                 className="space-y-4"
               >
-                <h3 className="text-xl sm:text-2xl font-bold text-[#E0D0B6]">Capture Your Moment</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-[#E0D0B6]">Creativity in Motion</h3>
                 <p className="text-[#D4C5AC] leading-relaxed font-light">
-                  Instagrammable setups and professional photography. Every moment is documented so your memories last forever.
+                  From music and style to expression and energy, Pragyarambh celebrates the creativity and spirit of a new beginning for students across the three participating departments.
                 </p>
               </motion.div>
             </div>
@@ -304,9 +313,9 @@ export default function PragyarambhLanding() {
         </div>
       </section>
 
-      {/* Details Section */}
-      <section id="details" className="relative bg-[#1A120D] px-4 py-20 sm:px-8 md:py-32">
-        <div className="mx-auto max-w-6xl">
+      {/* FAQ Section */}
+      <section id="faq" className="relative bg-[#1A120D] px-4 py-20 sm:px-8 md:py-32">
+        <div className="mx-auto max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -314,62 +323,51 @@ export default function PragyarambhLanding() {
             transition={{ duration: 0.8 }}
             className="mb-16 md:mb-24"
           >
-            <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black mb-3">Details</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#CC9E4C] font-black mb-3">FAQ</p>
             <h2 className="text-5xl sm:text-6xl font-black leading-[1.1] text-[#E0D0B6] tracking-[-0.02em]">
-              Registration & Entry Info
+              Everything you need to know
             </h2>
           </motion.div>
 
-          <div className="grid gap-12 md:grid-cols-2">
-            {/* Registration */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="space-y-6"
-            >
-              <h3 className="text-xl font-bold text-[#E0D0B6] uppercase tracking-[0.05em]">Registration Tiers</h3>
-              <div className="space-y-6">
-                {[
-                  { year: 'First Year', fee: 'Free', desc: 'All freshers welcome' },
-                  { year: 'Second Year', fee: '₹250', desc: 'UPI or Cash payment' },
-                  { year: 'Third Year', fee: '₹250', desc: 'UPI or Cash payment' },
-                ].map((tier, idx) => (
-                  <div key={idx} className="pb-6 border-b border-[#CC9E4C]/20 last:border-b-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-lg font-semibold text-[#E0D0B6]">{tier.year}</p>
-                      <p className="text-2xl font-black text-[#CC9E4C]">{tier.fee}</p>
-                    </div>
-                    <p className="text-sm text-[#D4C5AC]">{tier.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Next Steps */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="space-y-6"
-            >
-              <h3 className="text-xl font-bold text-[#E0D0B6] uppercase tracking-[0.05em]">Get Your Pass</h3>
-              <ol className="space-y-5">
-                {[
-                  'Fill your registration details accurately',
-                  'Complete payment if required (UPI QR provided)',
-                  'Submit and wait for admin approval',
-                  'Receive your digital pass via email',
-                ].map((step, idx) => (
-                  <li key={idx} className="flex gap-4">
-                    <span className="text-xl font-black text-[#CC9E4C] flex-shrink-0">{String(idx + 1).padStart(2, '0')}</span>
-                    <span className="text-[#D4C5AC] font-light leading-relaxed">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </motion.div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                question: 'What is Pragyarambh 3.0?',
+                answer: 'Pragyarambh 3.0 is the freshers celebration for Cybersecurity & Digital Forensics, Data Science & Data Analytics, and Artificial Intelligence & Machine Learning.'
+              },
+              {
+                question: 'What is this year\'s theme?',
+                answer: 'Retro Fusion — bringing together retro nostalgia with the energy and style of a new generation.'
+              },
+              {
+                question: 'Who can attend?',
+                answer: 'The event is intended for eligible freshers from the participating departments.'
+              },
+              {
+                question: 'How do I register?',
+                answer: 'Complete the registration form through the Register Now button. Follow the instructions provided during registration.'
+              },
+              {
+                question: 'Is registration required?',
+                answer: 'Yes. Students should complete their registration before attending.'
+              },
+              {
+                question: 'What are the payment options?',
+                answer: 'For students for whom payment applies, the registration page provides UPI and cash options. UPI users will be shown the QR code and payment-proof upload option.'
+              },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: idx * 0.05 }}
+                className="space-y-3 border border-[#CC9E4C]/10 bg-[#201611]/60 p-6 rounded-lg"
+              >
+                <h3 className="text-lg font-bold text-[#E0D0B6]">{item.question}</h3>
+                <p className="text-[#D4C5AC] leading-relaxed font-light">{item.answer}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -389,7 +387,7 @@ export default function PragyarambhLanding() {
               Ready to join the celebration?
             </h2>
             <p className="text-base text-[#D4C5AC] font-light max-w-2xl mx-auto leading-relaxed">
-              Secure your spot now. This night will define your college memories. Limited entries, unlimited vibes.
+              Start your campus journey with a freshers celebration built around music, connection and a new beginning.
             </p>
           </motion.div>
 
@@ -421,14 +419,14 @@ export default function PragyarambhLanding() {
               <ul className="space-y-1 font-light">
                 <li><a href="#about" className="hover:text-[#CC9E4C] transition">About</a></li>
                 <li><a href="#experience" className="hover:text-[#CC9E4C] transition">Experience</a></li>
-                <li><a href="#details" className="hover:text-[#CC9E4C] transition">Details</a></li>
+                <li><a href="#faq" className="hover:text-[#CC9E4C] transition">FAQ</a></li>
               </ul>
             </div>
             <div className="space-y-3 text-xs text-[#8B9EA5]">
               <p className="font-semibold text-[#E0D0B6] uppercase tracking-[0.08em]">Support</p>
               <ul className="space-y-1 font-light">
                 <li><a href="/register" className="hover:text-[#CC9E4C] transition">Register</a></li>
-                <li><a href="#" className="hover:text-[#CC9E4C] transition">FAQs</a></li>
+                <li><a href="#faq" className="hover:text-[#CC9E4C] transition">FAQs</a></li>
               </ul>
             </div>
           </div>
