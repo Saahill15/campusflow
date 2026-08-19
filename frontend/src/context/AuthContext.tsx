@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { registerRefreshSessionHandler } from '../lib/api'
 import { resolveApiUrl } from '../utils/env'
 
-export type Role = 'student' | 'committee' | 'admin' | 'scanner' | 'guest'
+export type Role = 'student' | 'committee' | 'admin' | 'security_volunteer' | 'scanner' | 'guest'
 export type Permission = 'view_dashboard' | 'manage_students' | 'scan' | 'manage_system' | 'review_access'
 
 export type User = {
@@ -49,12 +49,13 @@ type AuthContextValue = {
 
 const STORAGE_KEY = 'campusflow_auth'
 
-const rolePriority: Role[] = ['admin', 'committee', 'scanner', 'student', 'guest']
+const rolePriority: Role[] = ['admin', 'security_volunteer', 'committee', 'scanner', 'student', 'guest']
 
 const rolePermissions: Record<Role, Permission[]> = {
   student: ['view_dashboard'],
   committee: ['view_dashboard', 'scan'],
   admin: ['view_dashboard', 'manage_students', 'manage_system', 'review_access'],
+  security_volunteer: ['scan'],
   scanner: ['view_dashboard', 'scan'],
   guest: [],
 }

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from repos.qr_repo import QRCodeRepository
@@ -13,6 +14,7 @@ from models.entry_log import EntryLog
 from models.qr_code import QRCode, QRStatus
 from models.pass_model import Pass, PassStatus
 from models.registration import Registration, RegistrationStatus
+from models.event import Event
 from services.system_settings_service import SystemSettingsService
 
 
@@ -47,6 +49,113 @@ class CheckInService:
 
     async def validate_qr_token(self, qr_token: str) -> Optional[QRCode]:
         return await self.qr_repo.get_by_token(qr_token)
+
+    async def preview_scan(self, qr_token: str, gate_id: str) -> dict:
+        context = await self._load_scan_context(qr_token, gate_id)
+        if context['status'] != 'OK':
+            return context
+        return self._safe_preview(context, 'ALREADY_CHECKED_IN' if context['registration'].checked_in or context['pass_obj'].checked_in_at else 'VALID_PASS')
+
+    async def confirm_scan(self, qr_token: str, gate_id: str, scanner_id: Optional[int] = None, device_identifier: Optional[str] = None) -> dict:
+        if not (await SystemSettingsService(self.session).get_settings()).checkin_enabled:
+            return {'status': 'CHECKIN_DISABLED', 'message': 'Check-in is currently disabled.'}
+
+        locked_rows = await self.session.execute(
+            select(Registration, Pass).join(Pass, Pass.registration_id == Registration.id)
+            .join(QRCode, QRCode.pass_id == Pass.id)
+            .where(QRCode.qr_token == qr_token)
+            .with_for_update()
+        )
+        locked_row = locked_rows.first()
+        registration = locked_row[0] if locked_row else None
+        context = await self._load_scan_context(qr_token, gate_id)
+        if context['status'] != 'OK':
+            return context
+        if registration and registration.id != context['registration'].id:
+            return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
+        registration = context['registration']
+        pass_obj = context['pass_obj']
+        if registration.checked_in or pass_obj.checked_in_at:
+            return self._safe_preview(context, 'ALREADY_CHECKED_IN')
+
+        successful_entries = await self.session.execute(
+            select(func.count()).select_from(EntryLog).where(EntryLog.pass_id == pass_obj.id, EntryLog.entry_status == 'success')
+        )
+        if successful_entries.scalar_one() > 0:
+            return self._safe_preview(context, 'ALREADY_CHECKED_IN')
+
+        now = datetime.now(timezone.utc)
+        entry_log = EntryLog(
+            event_id=context['event'].id,
+            pass_id=pass_obj.id,
+            qr_code_id=context['qr'].id,
+            gate_id=gate_id,
+            scanned_by=scanner_id,
+            entry_status='success',
+            device_identifier=device_identifier,
+            scan_timestamp=now,
+        )
+        await self.entry_repo.create(entry_log)
+        registration.checked_in = True
+        registration.checked_in_at = now
+        pass_obj.checked_in_at = now
+        self.session.add_all([registration, pass_obj])
+        await self.session.commit()
+        result = self._safe_preview(context, 'CHECKED_IN')
+        result['entry_log_id'] = entry_log.id
+        result['checked_in'] = True
+        result['checked_in_at'] = now
+        return result
+
+    async def _load_scan_context(self, qr_token: str, gate_id: str) -> dict:
+        if not (await SystemSettingsService(self.session).get_settings()).checkin_enabled:
+            return {'status': 'CHECKIN_DISABLED', 'message': 'Check-in is currently disabled.'}
+
+        gate = await self.gate_repo.get_by_id(gate_id)
+        if not gate:
+            return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
+        qr = await self.qr_repo.get_by_token(qr_token)
+        if not qr:
+            return {'status': 'INVALID_QR', 'message': 'Invalid QR.'}
+        if qr.status in {QRStatus.Revoked, QRStatus.Expired} or not qr.is_active:
+            return {'status': 'INVALID_QR', 'message': 'Invalid QR.'}
+        pass_obj = await self.pass_repo.get_by_id(qr.pass_id)
+        if not pass_obj:
+            return {'status': 'PASS_NOT_FOUND', 'message': 'Pass not found.'}
+        if pass_obj.status in {PassStatus.Revoked, PassStatus.Expired} or not pass_obj.is_active:
+            return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
+        registration = await self.reg_repo.get_by_id(pass_obj.registration_id)
+        if not registration or registration.status != RegistrationStatus.Approved:
+            return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
+        event = await self.session.get(Event, gate.event_id)
+        if not event or event.id != registration.event_id:
+            return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
+        event_settings = await self.settings_repo.get_by_event_id(event.id)
+        if event_settings and not event_settings.allow_check_in:
+            return {'status': 'CHECKIN_DISABLED', 'message': 'Check-in is currently disabled.'}
+        return {'status': 'OK', 'qr': qr, 'pass_obj': pass_obj, 'registration': registration, 'event': event}
+
+    @staticmethod
+    def _safe_preview(context: dict, result_status: str) -> dict:
+        registration = context['registration']
+        pass_obj = context['pass_obj']
+        event = context['event']
+        return {
+            'status': result_status,
+            'message': {
+                'VALID_PASS': 'Valid pass.',
+                'ALREADY_CHECKED_IN': 'This pass has already been checked in.',
+                'CHECKED_IN': 'Check-in successful.',
+            }.get(result_status, 'Entry is not allowed.'),
+            'student_name': ' '.join(filter(None, [registration.first_name, registration.last_name])) or 'Student',
+            'registration_number': registration.registration_number,
+            'pass_number': pass_obj.pass_number,
+            'department': registration.department,
+            'academic_year': registration.academic_year,
+            'event': event.title,
+            'checked_in': bool(registration.checked_in or pass_obj.checked_in_at),
+            'checked_in_at': registration.checked_in_at or pass_obj.checked_in_at,
+        }
 
     async def mark_check_in(self, registration: Registration, pass_obj: Pass) -> None:
         now = datetime.now(timezone.utc)

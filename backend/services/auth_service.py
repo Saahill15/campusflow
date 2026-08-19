@@ -50,7 +50,7 @@ class AuthService:
 
     async def authenticate(self, email: str, password: str) -> Optional[User]:
         user = await self.repo.get_by_email(email)
-        if not user or not verify_password(password, user.hashed_password):
+        if not user or not user.is_active or not verify_password(password, user.hashed_password):
             return None
         return user
 

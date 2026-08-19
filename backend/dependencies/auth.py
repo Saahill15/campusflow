@@ -86,3 +86,11 @@ class RequirePermission:
         if self.permission_name not in perms:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permission")
         return user
+
+
+class RequireSecurityScanner:
+    async def __call__(self, user: User = Depends(current_active_user)) -> User:
+        role_names = {role.name for role in user.roles}
+        if not role_names.intersection({'admin', 'security_volunteer'}):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Insufficient role')
+        return user

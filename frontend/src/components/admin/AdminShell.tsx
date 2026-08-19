@@ -7,6 +7,7 @@ const navItems = [
   { to: '/admin', label: 'Dashboard' },
   { to: '/admin/registrations', label: 'Registrations' },
   { to: '/admin/settings', label: 'Settings' },
+  { to: '/admin/security-volunteers', label: 'Security Volunteers' },
 ]
 
 export default function AdminShell() {

@@ -32,6 +32,8 @@ def create_app() -> FastAPI:
     app.include_router(registration_router, prefix="/api/v1", tags=["registration"])
     from api.admin import router as admin_router
     app.include_router(admin_router, prefix="/api/v1")
+    from api.security import router as security_router
+    app.include_router(security_router, prefix="/api/v1")
 
     return app
 

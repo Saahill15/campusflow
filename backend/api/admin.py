@@ -2,12 +2,13 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from dependencies.auth import RequireRole
 from dependencies.database import get_db
-from models.auth import User
+from models.auth import Role, User, users_roles
 from models.registration import Registration
 from schemas.admin import (
     AdminPassQRCode,
@@ -38,11 +39,67 @@ from services.registration_email_service import (
 from services.pass_service import PassService
 from services.qr_service import QRCodeService
 from services.registration_service import RegistrationService
+from services.auth_service import hash_password
+from schemas.security import SecurityVolunteerCreate, SecurityVolunteerResponse, SecurityVolunteerStatusUpdate
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 require_admin = RequireRole('admin')
+
+
+@router.get('/security-volunteers', response_model=list[SecurityVolunteerResponse])
+async def list_security_volunteers(
+    _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(User).join(User.roles).where(Role.name == 'security_volunteer').options(selectinload(User.roles)).order_by(User.created_at.desc())
+    )
+    return result.scalars().unique().all()
+
+
+@router.post('/security-volunteers', response_model=SecurityVolunteerResponse, status_code=status.HTTP_201_CREATED)
+async def create_security_volunteer(
+    payload: SecurityVolunteerCreate,
+    _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    existing = (await db.execute(select(User).where(User.email == payload.email))).scalars().first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='A user with this email already exists.')
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail='Passwords do not match.')
+
+    role = (await db.execute(select(Role).where(Role.name == 'security_volunteer'))).scalars().first()
+    if not role:
+        role = Role(name='security_volunteer', description='On-day QR scanning and check-in role')
+        db.add(role)
+        await db.flush()
+    user = User(email=payload.email, hashed_password=hash_password(payload.password), is_active=True, is_verified=True)
+    user.roles = [role]
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.patch('/security-volunteers/{user_id}', response_model=SecurityVolunteerResponse)
+async def update_security_volunteer(
+    user_id: int,
+    payload: SecurityVolunteerStatusUpdate,
+    _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.roles)))
+    user = result.scalars().first()
+    if not user or not any(role.name == 'security_volunteer' for role in user.roles):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Security volunteer not found')
+    user.is_active = payload.is_active
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 
 async def _get_pass_artifact(registration_id: str, db: AsyncSession):

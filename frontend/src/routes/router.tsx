@@ -11,6 +11,9 @@ import AdminHomePage from '../pages/admin/AdminHomePage'
 import AdminRegistrationsPage from '../pages/admin/AdminRegistrationsPage'
 import AdminRegistrationDetailPage from '../pages/admin/AdminRegistrationDetailPage'
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
+import AdminSecurityVolunteersPage from '../pages/admin/AdminSecurityVolunteersPage'
+import SecurityLoginPage from '../pages/security/SecurityLoginPage'
+import SecurityScannerPage from '../pages/security/SecurityScannerPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { isInitialized, user } = useAuth()
@@ -27,6 +30,8 @@ export default function Router() {
         <Route path="/" element={<PragyarambhLanding />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/check-status" element={<CheckStatusPage />} />
+        <Route path="/security/login" element={<SecurityLoginPage />} />
+        <Route path="/security/scanner" element={<SecurityScannerPage />} />
         <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
@@ -41,6 +46,7 @@ export default function Router() {
           <Route path="registrations" element={<AdminRegistrationsPage />} />
           <Route path="registrations/:id" element={<AdminRegistrationDetailPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="security-volunteers" element={<AdminSecurityVolunteersPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
