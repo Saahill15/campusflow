@@ -80,7 +80,7 @@ export default function CheckStatusPage() {
           <p className="mt-4 max-w-xl text-sm leading-7 text-[#D4C5AC]">Enter the email address used during registration to view the latest registration status.</p>
 
           <form onSubmit={checkStatus} className="mt-8 space-y-4">
-            <label className="block"><span className="mb-2 block text-sm text-[#D4C5AC]">Registered Email</span><Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="sahil@example.com" autoComplete="email" required /></label>
+            <label className="block"><span className="mb-2 block text-sm text-[#D4C5AC]">Registered Email</span><Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Enter your registered email" autoComplete="email" required /></label>
             <Button type="submit" variant="primary" className="w-full" isLoading={loading}>Check Status</Button>
           </form>
 
