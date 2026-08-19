@@ -10,6 +10,7 @@ import AdminLoginPage from '../pages/admin/AdminLoginPage'
 import AdminHomePage from '../pages/admin/AdminHomePage'
 import AdminRegistrationsPage from '../pages/admin/AdminRegistrationsPage'
 import AdminRegistrationDetailPage from '../pages/admin/AdminRegistrationDetailPage'
+import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { isInitialized, user } = useAuth()
@@ -39,6 +40,7 @@ export default function Router() {
           <Route index element={<AdminHomePage />} />
           <Route path="registrations" element={<AdminRegistrationsPage />} />
           <Route path="registrations/:id" element={<AdminRegistrationDetailPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

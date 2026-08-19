@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.event import Event
 from models.pass_model import Pass
 from models.registration import Registration
+from services.system_settings_service import SystemSettingsService
 from services.email_service import (
     build_registration_approval_email,
     build_registration_confirmation_email,
@@ -12,11 +13,13 @@ from services.pdf_service import generate_pass_png_bytes
 from services.qr_service import QRCodeService
 
 
-async def send_confirmation_email(registration: Registration, email_service) -> tuple[bool, str | None]:
+async def send_confirmation_email(registration: Registration, email_service, db: AsyncSession) -> tuple[bool, str | None]:
     if not registration.email:
         return False, 'Registration has no email address.'
     if not getattr(email_service, 'enabled', False):
         return False, 'Email notifications are disabled.'
+    if not (await SystemSettingsService(db).get_settings()).email_enabled:
+        return False, 'Email sending is currently disabled.'
 
     subject, body = build_registration_confirmation_email(registration.registration_number or '')
     try:
@@ -58,6 +61,8 @@ async def send_existing_pass_email(
         return False, 'Registration has no email address.'
     if not getattr(email_service, 'enabled', False):
         return False, 'Email notifications are disabled.'
+    if not (await SystemSettingsService(db).get_settings()).email_enabled:
+        return False, 'Email sending is currently disabled.'
 
     try:
         attachments = await build_existing_pass_attachment(db, registration, pass_obj)

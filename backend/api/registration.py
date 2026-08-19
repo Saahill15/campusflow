@@ -17,6 +17,7 @@ from models.event import Event, EventStatus
 from models.registration import Registration, RegistrationStatus
 from schemas.registration import (
     PublicEmailActionResponse,
+    PublicAvailabilityResponse,
     PublicRegistrationStatusRequest,
     PublicRegistrationStatusResponse,
     RegistrationCreate,
@@ -26,6 +27,7 @@ from services.email_service import get_email_service
 from services.registration_service import RegistrationService
 from services.registration_email_service import send_confirmation_email, send_existing_pass_email
 from services.pass_service import PassService
+from services.system_settings_service import SystemSettingsService
 from middleware.rate_limiter import registration_limiter
 
 router = APIRouter()
@@ -332,6 +334,9 @@ async def create_registration(
     db: AsyncSession = Depends(get_db),
     email_service=Depends(get_email_service),
 ):
+    if not (await SystemSettingsService(db).get_settings()).registration_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Registration is currently closed.')
+
     # Rate limiting based on email (check first, before duplicate detection)
     if not registration_limiter.is_allowed(payload.email.lower()):
         raise HTTPException(
@@ -354,10 +359,9 @@ async def create_registration(
     response_message = 'Registration submitted successfully.'
 
     if email_enabled:
-        confirmation_email_sent, _message = await send_confirmation_email(registration, email_service)
+        confirmation_email_sent, email_message = await send_confirmation_email(registration, email_service, db)
         if not confirmation_email_sent:
-            response_message = 'Registration submitted successfully. Confirmation email could not be delivered at the moment.'
-            logger.exception('Registration confirmation email delivery failed')
+            response_message = f'Registration submitted successfully. {email_message or "Confirmation email could not be delivered at the moment."}'
     else:
         response_message = 'Registration submitted successfully. Email notifications are disabled.'
 
@@ -388,6 +392,9 @@ async def create_registration_with_file_upload(
     email_service=Depends(get_email_service),
 ):
     """Register with multipart form data and optional file upload for payment proof."""
+
+    if not (await SystemSettingsService(db).get_settings()).registration_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Registration is currently closed.')
 
     # Rate limiting based on email
     if not registration_limiter.is_allowed(email.lower()):
@@ -453,10 +460,9 @@ async def create_registration_with_file_upload(
     response_message = 'Registration submitted successfully.'
 
     if email_enabled:
-        confirmation_email_sent, _message = await send_confirmation_email(registration, email_service)
+        confirmation_email_sent, email_message = await send_confirmation_email(registration, email_service, db)
         if not confirmation_email_sent:
-            response_message = 'Registration submitted successfully. Confirmation email could not be delivered at the moment.'
-            logger.exception('Registration confirmation email delivery failed')
+            response_message = f'Registration submitted successfully. {email_message or "Confirmation email could not be delivered at the moment."}'
     else:
         response_message = 'Registration submitted successfully. Email notifications are disabled.'
 
@@ -517,6 +523,15 @@ async def registration_status(
     )
 
 
+@router.get('/registration/availability', response_model=PublicAvailabilityResponse)
+async def registration_availability(db: AsyncSession = Depends(get_db)):
+    settings = await SystemSettingsService(db).get_settings()
+    return PublicAvailabilityResponse(
+        registration_enabled=settings.registration_enabled,
+        maintenance_mode=settings.maintenance_mode,
+    )
+
+
 @router.post('/registration/status/resend-confirmation', response_model=PublicEmailActionResponse)
 async def public_resend_confirmation(
     payload: PublicRegistrationStatusRequest,
@@ -530,7 +545,7 @@ async def public_resend_confirmation(
     registration = await _find_public_registration(email, db)
     if not registration or registration.status == RegistrationStatus.Approved:
         return PublicEmailActionResponse(email_sent=False, message='If a registration is eligible, a confirmation email will be sent.')
-    sent, message = await send_confirmation_email(registration, email_service)
+    sent, message = await send_confirmation_email(registration, email_service, db)
     return PublicEmailActionResponse(email_sent=sent, message=message or 'Confirmation email sent successfully.')
 
 

@@ -129,3 +129,8 @@ class PublicRegistrationStatusResponse(BaseModel):
 class PublicEmailActionResponse(BaseModel):
     email_sent: bool
     message: str
+
+
+class PublicAvailabilityResponse(BaseModel):
+    registration_enabled: bool
+    maintenance_mode: bool

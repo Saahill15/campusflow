@@ -10,6 +10,7 @@ from models.pass_model import Pass, PassStatus
 from models.qr_code import QRCode, QRStatus
 from models.gate import Gate
 from models.entry_log import EntryLog
+from models.system_settings import SystemSettings
 
 from services.checkin_service import CheckInService
 
@@ -68,6 +69,32 @@ async def test_checkin_success_and_counters():
         q = await s.execute(select(QRCode).where(QRCode.id == qr.id))
         qr2 = q.scalars().first()
         assert qr2.scan_count >= 1 and qr2.last_scanned_at is not None
+
+
+@pytest.mark.asyncio
+async def test_global_checkin_setting_blocks_scan_without_mutating_records():
+    async with get_session() as s:
+        ev = Event(title='DisabledCheckInEvent', slug='checkin-disabled-global', start_datetime=datetime.now(timezone.utc), end_datetime=datetime.now(timezone.utc), status='ongoing')
+        s.add(ev)
+        await s.flush()
+        reg = Registration(event_id=ev.id, status=RegistrationStatus.Approved, checked_in=False)
+        s.add(reg)
+        await s.flush()
+        p = Pass(event_id=ev.id, registration_id=reg.id, status=PassStatus.Issued, pass_number='P-CHK-DISABLED')
+        s.add(p)
+        await s.flush()
+        qr = QRCode(pass_id=p.id, qr_token='CHK-DISABLED', status=QRStatus.Active, scan_count=0)
+        gate = Gate(event_id=ev.id, name='Disabled Gate')
+        s.add_all([qr, gate, SystemSettings(id=1, checkin_enabled=False)])
+        await s.flush()
+
+        response = await CheckInService(s).process_scan(qr.qr_token, gate.id)
+        assert response == {'success': False, 'reason': 'Check-in is currently disabled.'}
+        await s.refresh(reg)
+        await s.refresh(qr)
+        assert reg.checked_in is False
+        assert qr.scan_count == 0
+        assert (await s.execute(select(EntryLog).where(EntryLog.qr_code_id == qr.id))).scalars().first() is None
 
 
 @pytest.mark.asyncio

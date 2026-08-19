@@ -226,7 +226,7 @@ async def reject_registration(
     notification_email_sent = False
     message = 'Email notifications are disabled.' if not email_enabled else None
 
-    if registration.email and email_enabled:
+    if registration.email and email_enabled and (await SystemSettingsService(db).get_settings()).email_enabled:
         subject, body = build_registration_rejection_email(registration.registration_number, payload.reason)
         try:
             await email_service.send_email(registration.email, subject, body)
@@ -235,6 +235,8 @@ async def reject_registration(
             notification_email_sent = False
             message = 'Registration rejected, but notification email could not be delivered.'
             logger.exception('Registration rejection email delivery failed for %s', registration.email)
+    elif registration.email and email_enabled:
+        message = 'Email sending is currently disabled.'
 
     response = AdminRegistrationRejectionResponse(
         registration_number=registration.registration_number,
@@ -300,7 +302,7 @@ async def resend_confirmation_email(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Registration not found')
     if registration.status == 'approved':
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Approved registrations must receive the existing pass email.')
-    sent, message = await send_confirmation_email(registration, email_service)
+    sent, message = await send_confirmation_email(registration, email_service, db)
     return AdminEmailActionResponse(
         registration_number=registration.registration_number,
         email_sent=sent,

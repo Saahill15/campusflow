@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 const navItems = [
   { to: '/admin', label: 'Dashboard' },
   { to: '/admin/registrations', label: 'Registrations' },
+  { to: '/admin/settings', label: 'Settings' },
 ]
 
 export default function AdminShell() {

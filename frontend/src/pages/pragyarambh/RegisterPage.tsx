@@ -3,9 +3,22 @@ import { motion } from 'framer-motion'
 import { ChevronLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import PragyarambhRegistrationCard from '../../components/pragyarambh/PragyarambhRegistrationCard'
+import api from '../../lib/api'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const [availability, setAvailability] = React.useState<{ registration_enabled: boolean; maintenance_mode: boolean } | null>(null)
+
+  React.useEffect(() => {
+    api.get<{ registration_enabled: boolean; maintenance_mode: boolean }>('/registration/availability')
+      .then((response) => setAvailability(response.data))
+      .catch(() => setAvailability({ registration_enabled: true, maintenance_mode: false }))
+  }, [])
+
+  if (availability?.maintenance_mode || availability?.registration_enabled === false) {
+    const maintenance = availability.maintenance_mode
+    return <main className="flex min-h-screen items-center justify-center bg-[#1A120D] px-6 text-center text-[#E0D0B6]"><section className="max-w-xl"><p className="text-xs font-black uppercase tracking-[0.3em] text-[#CC9E4C]">Pragyarambh 3.0</p><h1 className="mt-5 text-4xl font-black text-[#F7F0E8] sm:text-6xl">{maintenance ? 'Pragyarambh is currently under maintenance.' : 'Registration is currently closed.'}</h1><p className="mt-5 text-sm leading-7 text-[#D4C5AC]">{maintenance ? "We'll be back shortly." : 'Please check back later for registration updates.'}</p><div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => navigate('/')} className="border border-[#CC9E4C]/50 px-8 py-3 text-xs font-black uppercase tracking-[0.15em] text-[#E0C98E] transition hover:border-[#CC9E4C] hover:text-[#CC9E4C]">Back</button><button onClick={() => navigate('/check-status')} className="border border-[#CC9E4C]/50 px-8 py-3 text-xs font-black uppercase tracking-[0.15em] text-[#E0E0D0] transition hover:border-[#CC9E4C] hover:text-[#CC9E4C]">Check Status</button></div></section></main>
+  }
 
   return (
     <div className="relative min-h-screen bg-[#1A120D]">

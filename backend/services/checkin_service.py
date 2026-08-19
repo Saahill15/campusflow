@@ -13,6 +13,7 @@ from models.entry_log import EntryLog
 from models.qr_code import QRCode, QRStatus
 from models.pass_model import Pass, PassStatus
 from models.registration import Registration, RegistrationStatus
+from services.system_settings_service import SystemSettingsService
 
 
 class CheckInService:
@@ -62,6 +63,9 @@ class CheckInService:
         Always creates an EntryLog recording success or failure.
         """
         now = datetime.now(timezone.utc)
+
+        if not (await SystemSettingsService(self.session).get_settings()).checkin_enabled:
+            return {"success": False, "reason": "Check-in is currently disabled."}
 
         # Load gate to determine event context
         gate = await self.gate_repo.get_by_id(gate_id)

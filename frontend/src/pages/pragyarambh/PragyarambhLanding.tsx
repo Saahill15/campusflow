@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDown, Menu, Volume2, VolumeX, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import api from '../../lib/api'
 
 export default function PragyarambhLanding() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [videoError, setVideoError] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
+  const [maintenanceMode, setMaintenanceMode] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const navigate = useNavigate()
 
@@ -35,6 +37,16 @@ export default function PragyarambhLanding() {
 
     playVideo()
   }, [isMuted])
+
+  useEffect(() => {
+    api.get<{ maintenance_mode: boolean }>('/registration/availability')
+      .then((response) => setMaintenanceMode(response.data.maintenance_mode))
+      .catch(() => setMaintenanceMode(false))
+  }, [])
+
+  if (maintenanceMode) {
+    return <main className="flex min-h-screen items-center justify-center bg-[#1A120D] px-6 text-center text-[#E0D0B6]"><section className="max-w-xl"><p className="text-xs font-black uppercase tracking-[0.3em] text-[#CC9E4C]">Pragyarambh 3.0</p><h1 className="mt-5 text-4xl font-black text-[#F7F0E8] sm:text-6xl">Pragyarambh is currently under maintenance.</h1><p className="mt-5 text-sm leading-7 text-[#D4C5AC]">We&apos;ll be back shortly.</p><button onClick={() => navigate('/check-status')} className="mt-8 border border-[#CC9E4C]/50 px-8 py-3 text-xs font-black uppercase tracking-[0.15em] text-[#E0D0B6] transition hover:border-[#CC9E4C] hover:text-[#CC9E4C]">Check Status</button></section></main>
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#1A120D] text-[#E0D0B6]">

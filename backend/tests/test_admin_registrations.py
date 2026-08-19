@@ -10,6 +10,7 @@ from models.event import Event
 from models.pass_model import Pass, PassStatus
 from models.qr_code import QRCode, QRStatus
 from models.registration import PaymentStatus, Registration
+from models.system_settings import SystemSettings
 from services import registration_service
 from services.auth_service import hash_password
 from services.email_service import (
@@ -1077,3 +1078,66 @@ async def test_public_email_actions_handle_delivery_failure(client, email_servic
     assert response.status_code == 200
     assert response.json()['email_sent'] is False
     assert 'could not be delivered' in response.json()['message'].lower()
+
+
+@pytest.mark.asyncio
+async def test_email_setting_blocks_admin_and_public_resends_without_state_changes(client, email_service_override):
+    from api.registration import status_limiter
+    status_limiter.requests.clear()
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2a-email-admin@example.com', 'StrongPass123', 'admin')
+        pending = await _create_registration(session, 'PG26-000025', 'stage2a.email.pending@example.com')
+        approved = await _create_registration(session, 'PG26-000026', 'stage2a.email.approved@example.com', status='approved')
+        pass_obj, qr = await _create_pass_and_qr(session, approved)
+        session.add(SystemSettings(id=1, email_enabled=False))
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2a-email-admin@example.com')
+    admin_confirmation = await client.post(f'/api/v1/admin/registrations/{pending.id}/resend-confirmation-email', headers={'Authorization': f'Bearer {token}'})
+    admin_pass = await client.post(f'/api/v1/admin/registrations/{approved.id}/send-pass-email', headers={'Authorization': f'Bearer {token}'})
+    public_confirmation = await client.post('/api/v1/registration/status/resend-confirmation', json={'email': pending.email})
+    public_pass = await client.post('/api/v1/registration/status/resend-pass', json={'email': approved.email})
+    assert admin_confirmation.status_code == 200 and admin_confirmation.json()['email_sent'] is False
+    assert admin_pass.status_code == 200 and admin_pass.json()['email_sent'] is False
+    assert public_confirmation.status_code == 200 and public_confirmation.json()['email_sent'] is False
+    assert public_pass.status_code == 200 and public_pass.json()['email_sent'] is False
+    assert email_service_override.calls == []
+
+    async with get_session() as session:
+        saved = (await session.execute(select(Registration).where(Registration.id == approved.id))).scalars().one()
+        passes = (await session.execute(select(Pass).where(Pass.registration_id == approved.id))).scalars().all()
+        qrcodes = (await session.execute(select(QRCode).where(QRCode.pass_id == pass_obj.id))).scalars().all()
+        assert saved.status == 'approved'
+        assert len(passes) == 1 and passes[0].id == pass_obj.id
+        assert len(qrcodes) == 1 and qrcodes[0].id == qr.id
+
+
+@pytest.mark.asyncio
+async def test_email_disabled_does_not_block_registration_or_approval_pass_generation(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2a-approval-admin@example.com', 'StrongPass123', 'admin')
+        session.add(SystemSettings(id=1, email_enabled=False))
+        await session.commit()
+
+    registration_response = await client.post('/api/v1/registration', json={
+        'first_name': 'Email', 'last_name': 'Disabled', 'department': 'Cybersecurity and Digital Forensics',
+        'academic_year': 'First Year', 'roll_number': 'FCS-EMAIL-OFF', 'phone': '9876543211',
+        'email': 'stage2a.registration.email.off@example.com', 'gender': 'Male',
+    })
+    assert registration_response.status_code == 200
+    assert registration_response.json()['confirmation_email_sent'] is False
+    assert email_service_override.calls == []
+
+    async with get_session() as session:
+        registration = (await session.execute(select(Registration).where(Registration.email == 'stage2a.registration.email.off@example.com'))).scalars().one()
+
+    token = await _get_admin_token(client, 'stage2a-approval-admin@example.com')
+    approval = await client.post(f'/api/v1/admin/registrations/{registration.id}/approve', headers={'Authorization': f'Bearer {token}'})
+    assert approval.status_code == 200
+    assert approval.json()['notification_email_sent'] is False
+    async with get_session() as session:
+        approved = (await session.execute(select(Registration).where(Registration.id == registration.id))).scalars().one()
+        passes = (await session.execute(select(Pass).where(Pass.registration_id == registration.id))).scalars().all()
+        assert approved.status == 'approved'
+        assert len(passes) == 1
+    assert email_service_override.calls == []
