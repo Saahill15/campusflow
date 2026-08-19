@@ -780,3 +780,143 @@ async def test_cannot_approve_rejected_registration(client):
     admin_token = admin_login.json()['data']['access_token']
     response = await client.post(f'/api/v1/admin/registrations/{registration.id}/approve', headers={'Authorization': f'Bearer {admin_token}'})
     assert response.status_code == 400
+
+
+async def _get_admin_token(client, email: str) -> str:
+    response = await client.post('/auth/login', json={'email': email, 'password': 'StrongPass123'})
+    return response.json()['data']['access_token']
+
+
+@pytest.mark.asyncio
+async def test_admin_can_update_one_and_multiple_editable_fields_and_values_persist(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2-admin@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000010', 'stage2.student@example.com')
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2-admin@example.com')
+    response = await client.patch(
+        f'/api/v1/admin/registrations/{registration.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'first_name': 'meera', 'department': 'Data Science and Data Analysis', 'academic_year': 'Second Year', 'roll_number': 'fcs26099', 'notes': 'Corrected by admin'},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data['first_name'] == 'Meera'
+    assert data['department'] == 'Data Science and Data Analysis'
+    assert data['academic_year'] == 'Second Year'
+    assert data['roll_number'] == 'FCS26099'
+    assert data['notes'] == 'Corrected by admin'
+
+    detail = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {token}'})
+    assert detail.status_code == 200
+    assert detail.json()['roll_number'] == 'FCS26099'
+    assert detail.json()['email'] == 'stage2.student@example.com'
+
+
+@pytest.mark.asyncio
+async def test_non_admin_and_unauthenticated_users_cannot_update_registration(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2-student@example.com', 'StrongPass123', 'student')
+        await _create_user_with_role(session, 'stage2-admin-two@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000011', 'stage2.student2@example.com')
+        await session.commit()
+
+    student_token = await _get_admin_token(client, 'stage2-student@example.com')
+    forbidden = await client.patch(
+        f'/api/v1/admin/registrations/{registration.id}',
+        headers={'Authorization': f'Bearer {student_token}'},
+        json={'first_name': 'Blocked'},
+    )
+    unauthenticated = await client.patch(f'/api/v1/admin/registrations/{registration.id}', json={'first_name': 'Blocked'})
+    assert forbidden.status_code == 403
+    assert unauthenticated.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_invalid_department_and_academic_year_are_rejected(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2-validation@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000012', 'stage2.student3@example.com')
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2-validation@example.com')
+    invalid_department = await client.patch(
+        f'/api/v1/admin/registrations/{registration.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'department': 'Invalid Department'},
+    )
+    invalid_year = await client.patch(
+        f'/api/v1/admin/registrations/{registration.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'academic_year': 'Fourth Year'},
+    )
+    assert invalid_department.status_code == 422
+    assert invalid_department.json()['detail'] == 'Department is invalid'
+    assert invalid_year.status_code == 422
+    assert invalid_year.json()['detail'] == 'Academic year is invalid'
+
+
+@pytest.mark.asyncio
+async def test_system_fields_cannot_be_changed(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2-protected@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000013', 'stage2.student4@example.com')
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2-protected@example.com')
+    for field, value in {
+        'registration_number': 'PG26-999999',
+        'status': 'approved',
+        'payment_status': 'verified',
+        'payment_proof': 'changed-proof',
+        'approved_at': '2026-08-19T00:00:00Z',
+        'checked_in': True,
+    }.items():
+        response = await client.patch(
+            f'/api/v1/admin/registrations/{registration.id}',
+            headers={'Authorization': f'Bearer {token}'},
+            json={field: value},
+        )
+        assert response.status_code == 422, field
+
+    detail = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {token}'})
+    assert detail.json()['registration_number'] == 'PG26-000013'
+    assert detail.json()['status'] == 'pending'
+
+
+@pytest.mark.asyncio
+async def test_editing_does_not_change_pass_qr_email_or_registration_state(client, email_service_override):
+    async with get_session() as session:
+        admin = await _create_user_with_role(session, 'stage2-side-effects@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000014', 'stage2.student5@example.com', status='approved')
+        registration.approved_by = admin.id
+        registration.approved_at = datetime.now(timezone.utc)
+        registration.checked_in = True
+        registration.checked_in_at = datetime.now(timezone.utc)
+        await session.flush()
+        pass_obj, qr = await _create_pass_and_qr(session, registration)
+        await session.commit()
+        original = (registration.registration_number, registration.status, registration.approved_by, registration.approved_at, registration.checked_in, registration.checked_in_at, pass_obj.id, qr.id, qr.qr_token)
+
+    token = await _get_admin_token(client, 'stage2-side-effects@example.com')
+    response = await client.patch(
+        f'/api/v1/admin/registrations/{registration.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'email': 'changed.student@example.com', 'phone': '9123456789'},
+    )
+    assert response.status_code == 200
+    assert email_service_override.calls == []
+
+    async with get_session() as session:
+        updated = (await session.execute(select(Registration).where(Registration.id == registration.id))).scalars().one()
+        passes = (await session.execute(select(Pass).where(Pass.registration_id == registration.id))).scalars().all()
+        qrcodes = (await session.execute(select(QRCode).where(QRCode.pass_id == pass_obj.id))).scalars().all()
+        assert updated.registration_number == original[0]
+        assert updated.status == original[1]
+        assert updated.approved_by == original[2]
+        assert updated.approved_at == original[3].replace(tzinfo=None)
+        assert updated.checked_in == original[4]
+        assert updated.checked_in_at == original[5].replace(tzinfo=None)
+        assert len(passes) == 1 and passes[0].id == original[6]
+        assert len(qrcodes) == 1 and qrcodes[0].id == original[7] and qrcodes[0].qr_token == original[8]

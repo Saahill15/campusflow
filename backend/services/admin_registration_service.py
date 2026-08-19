@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta, timezone
+import re
 from typing import Optional, Sequence, Tuple
 
 from sqlalchemy import and_, func, or_, select
@@ -142,6 +143,82 @@ class AdminRegistrationService:
     async def get_registration(self, registration_id: str) -> Optional[Registration]:
         result = await self.session.execute(select(Registration).where(Registration.id == registration_id))
         return result.scalars().first()
+
+    async def update_registration(self, registration_id: str, changes: dict) -> Registration:
+        registration = await self.get_registration(registration_id)
+        if not registration:
+            raise ValueError('Registration not found')
+
+        if 'first_name' in changes:
+            value = (changes['first_name'] or '').strip()
+            if not value:
+                raise ValueError('First name is required')
+            registration.first_name = ' '.join(part[:1].upper() + part[1:].lower() for part in value.split())
+        if 'last_name' in changes:
+            value = (changes['last_name'] or '').strip()
+            if not value:
+                raise ValueError('Last name is required')
+            registration.last_name = ' '.join(part[:1].upper() + part[1:].lower() for part in value.split())
+        if 'department' in changes:
+            value = (changes['department'] or '').strip()
+            if value not in {
+                'Cybersecurity and Digital Forensics',
+                'Data Science and Data Analysis',
+                'Artificial Intelligence and Machine Learning',
+            }:
+                raise ValueError('Department is invalid')
+            registration.department = value
+        if 'academic_year' in changes:
+            value = (changes['academic_year'] or '').strip()
+            if value not in {'First Year', 'Second Year', 'Third Year'}:
+                raise ValueError('Academic year is invalid')
+            registration.academic_year = value
+        if 'roll_number' in changes:
+            value = (changes['roll_number'] or '').strip().upper()
+            if not value:
+                raise ValueError('Roll number is required')
+            if await self._find_duplicate(registration, 'roll_number', value):
+                raise ValueError('duplicate_roll_number')
+            registration.roll_number = value
+        if 'phone' in changes:
+            value = (changes['phone'] or '').strip()
+            cleaned = value.replace(' ', '').replace('-', '')
+            if not cleaned.isdigit() or len(cleaned) < 7:
+                raise ValueError('Phone number must contain at least 7 digits')
+            registration.phone = value
+        if 'email' in changes:
+            value = (changes['email'] or '').strip().lower()
+            if not value or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', value):
+                raise ValueError('Please enter a valid email address')
+            if await self._find_duplicate(registration, 'email', value):
+                raise ValueError('duplicate_email')
+            registration.email = value
+        if 'gender' in changes:
+            value = (changes['gender'] or '').strip()
+            if value not in {'Male', 'Female', 'Other'}:
+                raise ValueError('Gender is invalid')
+            registration.gender = value
+        if 'notes' in changes:
+            registration.notes = changes['notes'].strip() if changes['notes'] else None
+
+        self.session.add(registration)
+        await self.session.commit()
+        await self.session.refresh(registration)
+        return registration
+
+    async def _find_duplicate(self, registration: Registration, field: str, value: str) -> Optional[Registration]:
+        query = select(Registration).where(
+            Registration.event_id == registration.event_id,
+            getattr(Registration, field) == value,
+            Registration.id != registration.id,
+            Registration.status.in_([
+                RegistrationStatus.Pending,
+                RegistrationStatus.Approved,
+                RegistrationStatus.Cancelled,
+                RegistrationStatus.CheckedIn,
+            ]),
+        )
+        return (await self.session.execute(query)).scalars().first()
 
     async def get_dashboard_summary(self, recent_limit: int = 6) -> AdminDashboardResponse:
         base_filter = Registration.deleted_at.is_(None)

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from schemas.common import PaginationMeta
 
@@ -42,6 +42,20 @@ class AdminRegistrationDetail(AdminRegistrationItem):
     notes: Optional[str] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
+
+
+class AdminRegistrationUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    department: Optional[str] = None
+    academic_year: Optional[str] = None
+    roll_number: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    gender: Optional[str] = None
+    notes: Optional[str] = None
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class AdminRegistrationFilterOptions(BaseModel):

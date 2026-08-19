@@ -18,6 +18,7 @@ from schemas.admin import (
     AdminRegistrationListResponse,
     AdminRegistrationRejectionRequest,
     AdminRegistrationRejectionResponse,
+    AdminRegistrationUpdate,
 )
 from schemas.common import PaginationMeta
 from schemas.system_settings import SystemSettingsResponse, SystemSettingsUpdate
@@ -159,6 +160,25 @@ async def get_registration(
     if not registration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Registration not found')
     return registration
+
+
+@router.patch('/registrations/{registration_id}', response_model=AdminRegistrationDetail)
+async def update_registration(
+    registration_id: str,
+    payload: AdminRegistrationUpdate,
+    _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    service = AdminRegistrationService(db)
+    try:
+        return await service.update_registration(
+            registration_id,
+            payload.model_dump(exclude_unset=True),
+        )
+    except ValueError as exc:
+        if str(exc) == 'Registration not found':
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.post('/registrations/{registration_id}/approve', response_model=AdminRegistrationApprovalResponse)

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import api from '../../lib/api'
-import { Button, ConfirmDialog, Modal, Textarea } from '../../components/ui'
+import { Button, ConfirmDialog, Input, Modal, Select, Textarea } from '../../components/ui'
 
 type RegistrationDetail = {
   id?: string
@@ -42,6 +42,18 @@ type PassData = {
   qr?: { qr_token?: string | null } | null
 }
 
+type RegistrationEditForm = {
+  first_name: string
+  last_name: string
+  department: string
+  academic_year: string
+  roll_number: string
+  phone: string
+  email: string
+  gender: string
+  notes: string
+}
+
 const statusStyles: Record<string, string> = {
   pending: 'border-amber-300/20 bg-amber-400/10 text-amber-200',
   approved: 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200',
@@ -67,6 +79,10 @@ function InfoGrid({ fields }: { fields: Array<[string, string | number | null | 
       ))}
     </div>
   )
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block w-full"><span className="mb-1 block text-sm text-slate-300">{label}</span>{children}</label>
 }
 
 function PassPreview({ item, pass, qrToken }: { item: RegistrationDetail; pass: PassData; qrToken?: string | null }) {
@@ -130,6 +146,9 @@ export default function AdminRegistrationDetailPage() {
   const [passPreviewOpen, setPassPreviewOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState<RegistrationEditForm | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
 
   const loadPass = async (registrationId: string) => {
     setPassLoading(true)
@@ -241,6 +260,43 @@ export default function AdminRegistrationDetailPage() {
     }
   }
 
+  const beginEdit = () => {
+    if (!item) return
+    setActionError('')
+    setActionMessage('')
+    setEditForm({
+      first_name: item.first_name || '',
+      last_name: item.last_name || '',
+      department: item.department || '',
+      academic_year: item.academic_year || '',
+      roll_number: item.roll_number || '',
+      phone: item.phone || '',
+      email: item.email || '',
+      gender: item.gender || '',
+      notes: item.notes || '',
+    })
+    setEditOpen(true)
+  }
+
+  const handleEditSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!id || !editForm) return
+    setEditSaving(true)
+    setActionError('')
+    setActionMessage('')
+    try {
+      await api.patch(`/admin/registrations/${id}`, editForm)
+      setEditOpen(false)
+      setEditForm(null)
+      setActionMessage('Registration details updated successfully.')
+      await loadRegistration()
+    } catch (err: any) {
+      setActionError(err?.response?.data?.detail || err?.message || 'Unable to update registration')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   if (loading) {
     return <div className="space-y-6 text-slate-100"><div className="h-32 animate-pulse rounded-3xl border border-white/10 bg-slate-900/80" /><div className="grid gap-6 lg:grid-cols-2"><div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-slate-900/80" /><div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-slate-900/80" /></div></div>
   }
@@ -332,7 +388,7 @@ export default function AdminRegistrationDetailPage() {
 
           <section className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
             <h2 className="text-xl font-semibold text-white">Admin Actions</h2>
-            {item.status === 'pending' ? <div className="mt-5 grid gap-3"><Button variant="success" onClick={() => setConfirmApproveOpen(true)} isLoading={actionLoading}>Approve Registration</Button><Button variant="destructive" onClick={() => setRejectDialogOpen(true)} isLoading={actionLoading}>Reject Registration</Button></div> : item.status === 'approved' ? <div className="mt-5 grid gap-3"><Button variant="secondary" onClick={() => setPassPreviewOpen(true)} disabled={!passData}>View Pass</Button><Button variant="secondary" onClick={() => void handleDownload()} isLoading={actionLoading} disabled={!passData}>Download Pass</Button><Button variant="secondary" onClick={() => setConfirmResendOpen(true)} isLoading={actionLoading} disabled={!passData}>Resend Approval Email</Button></div> : <p className="mt-4 text-sm leading-6 text-slate-400">No status-changing actions are available for this registration.</p>}
+            <div className="mt-5 grid gap-3"><Button variant="primary" onClick={beginEdit}>Edit</Button>{item.status === 'pending' ? <><Button variant="success" onClick={() => setConfirmApproveOpen(true)} isLoading={actionLoading}>Approve Registration</Button><Button variant="destructive" onClick={() => setRejectDialogOpen(true)} isLoading={actionLoading}>Reject Registration</Button></> : item.status === 'approved' ? <><Button variant="secondary" onClick={() => setPassPreviewOpen(true)} disabled={!passData}>View Pass</Button><Button variant="secondary" onClick={() => void handleDownload()} isLoading={actionLoading} disabled={!passData}>Download Pass</Button><Button variant="secondary" onClick={() => setConfirmResendOpen(true)} isLoading={actionLoading} disabled={!passData}>Resend Approval Email</Button></> : <p className="text-sm leading-6 text-slate-400">No status-changing actions are available for this registration.</p>}</div>
             <div className="mt-5 border-t border-white/10 pt-4"><p className="text-xs uppercase tracking-[0.18em] text-slate-500">Email history</p><p className="mt-2 text-sm leading-6 text-slate-400">Delivery history is not stored. Approved registrations can resend the existing pass email above.</p></div>
           </section>
         </aside>
@@ -353,6 +409,42 @@ export default function AdminRegistrationDetailPage() {
 
       <Modal open={passPreviewOpen} onClose={() => setPassPreviewOpen(false)} title="Pass Preview">
         {passData ? <PassPreview item={item} pass={passData} qrToken={passData.qr?.qr_token} /> : null}
+      </Modal>
+
+      <Modal open={editOpen} onClose={() => { if (!editSaving) setEditOpen(false) }} title="Edit Registration">
+        {editForm ? <form onSubmit={handleEditSave} className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">
+          {actionError ? <div className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{actionError}</div> : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="First Name"><Input value={editForm.first_name} onChange={(event) => setEditForm({ ...editForm, first_name: event.target.value })} required /></FormField>
+            <FormField label="Last Name"><Input value={editForm.last_name} onChange={(event) => setEditForm({ ...editForm, last_name: event.target.value })} required /></FormField>
+            <Select label="Department" value={editForm.department} onChange={(event) => setEditForm({ ...editForm, department: event.target.value })} required>
+              <option value="">Select department</option>
+              <option value="Cybersecurity and Digital Forensics">Cybersecurity and Digital Forensics</option>
+              <option value="Data Science and Data Analysis">Data Science and Data Analysis</option>
+              <option value="Artificial Intelligence and Machine Learning">Artificial Intelligence and Machine Learning</option>
+            </Select>
+            <Select label="Academic Year" value={editForm.academic_year} onChange={(event) => setEditForm({ ...editForm, academic_year: event.target.value })} required>
+              <option value="">Select academic year</option>
+              <option value="First Year">First Year</option>
+              <option value="Second Year">Second Year</option>
+              <option value="Third Year">Third Year</option>
+            </Select>
+            <FormField label="Roll Number"><Input value={editForm.roll_number} onChange={(event) => setEditForm({ ...editForm, roll_number: event.target.value })} required /></FormField>
+            <FormField label="Contact Number"><Input value={editForm.phone} onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })} required /></FormField>
+            <FormField label="Email"><Input type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} required /></FormField>
+            <Select label="Gender" value={editForm.gender} onChange={(event) => setEditForm({ ...editForm, gender: event.target.value })} required>
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </Select>
+          </div>
+          <Textarea label="Notes" value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} rows={4} />
+          <div className="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setEditOpen(false)} disabled={editSaving}>Cancel</Button>
+            <Button type="submit" variant="primary" isLoading={editSaving}>Save Changes</Button>
+          </div>
+        </form> : null}
       </Modal>
     </div>
   )
