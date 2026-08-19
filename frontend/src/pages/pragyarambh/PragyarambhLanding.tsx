@@ -51,6 +51,7 @@ export default function PragyarambhLanding() {
             <a href="#about" className="transition duration-300 hover:text-[#CC9E4C]">About</a>
             <a href="#experience" className="transition duration-300 hover:text-[#CC9E4C]">Experience</a>
             <a href="#faq" className="transition duration-300 hover:text-[#CC9E4C]">FAQ</a>
+            <button onClick={() => navigate('/check-status')} className="transition duration-300 hover:text-[#CC9E4C]">Check Status</button>
           </nav>
           <div className="flex items-center gap-4">
             <button
@@ -94,6 +95,15 @@ export default function PragyarambhLanding() {
                 className="w-full mt-2 px-6 py-3 text-xs font-black tracking-[0.1em] text-[#442C1B] bg-[#CC9E4C] hover:bg-[#E0D0B6] transition uppercase"
               >
                 Register Now
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/check-status')
+                  setMenuOpen(false)
+                }}
+                className="w-full border border-[#CC9E4C]/50 px-6 py-3 text-xs font-black tracking-[0.1em] text-[#E0D0B6] hover:border-[#CC9E4C] hover:text-[#CC9E4C] transition uppercase"
+              >
+                Check Status
               </button>
             </nav>
           </motion.div>
@@ -189,6 +199,12 @@ export default function PragyarambhLanding() {
                 className="w-full max-w-[18rem] self-center border border-[#CC9E4C]/50 px-6 py-3 text-[0.65rem] font-black tracking-[0.15em] text-[#E0D0B6] transition duration-300 hover:border-[#CC9E4C] hover:text-[#CC9E4C] uppercase sm:w-auto sm:max-w-none sm:px-10 md:px-12"
               >
                 Discover More
+              </button>
+              <button
+                onClick={() => navigate('/check-status')}
+                className="w-full max-w-[18rem] self-center border border-[#CC9E4C]/50 px-6 py-3 text-[0.65rem] font-black tracking-[0.15em] text-[#E0C98E] transition duration-300 hover:border-[#CC9E4C] hover:text-[#CC9E4C] uppercase sm:w-auto sm:max-w-none sm:px-10 md:px-12"
+              >
+                Check Status
               </button>
             </motion.div>
           </motion.div>
