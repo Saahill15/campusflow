@@ -6,7 +6,7 @@ from dependencies.auth import RequireSecurityScanner
 from dependencies.database import get_db
 from models.auth import User
 from models.gate import Gate
-from schemas.security import SecurityGateResponse, SecurityScanRequest, SecurityScanResponse
+from schemas.security import SecurityDashboardResponse, SecurityGateResponse, SecurityScanRequest, SecurityScanResponse
 from services.checkin_service import CheckInService
 
 router = APIRouter(prefix='/security', tags=['security'])
@@ -20,6 +20,14 @@ async def list_security_gates(
 ):
     gates = (await db.execute(select(Gate).where(Gate.is_active.is_(True)).order_by(Gate.display_order, Gate.name))).scalars().all()
     return [SecurityGateResponse(id=gate.id, name=gate.name) for gate in gates]
+
+
+@router.get('/dashboard', response_model=SecurityDashboardResponse)
+async def security_dashboard(
+    _scanner: User = Depends(require_security_scanner),
+    db: AsyncSession = Depends(get_db),
+):
+    return await CheckInService(db).dashboard_statistics()
 
 
 @router.post('/scan', response_model=SecurityScanResponse)

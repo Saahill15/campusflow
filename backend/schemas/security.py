@@ -29,6 +29,16 @@ class SecurityGateResponse(BaseModel):
     name: str
 
 
+class SecurityDashboardResponse(BaseModel):
+    event_title: Optional[str] = None
+    total_checked_in: int = 0
+    male_checked_in: int = 0
+    female_checked_in: int = 0
+    other_checked_in: int = 0
+    approved_eligible: int = 0
+    remaining_to_check_in: int = 0
+
+
 class SecurityVolunteerResponse(BaseModel):
     id: int
     email: EmailStr

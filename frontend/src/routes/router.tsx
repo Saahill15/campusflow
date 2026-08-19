@@ -13,6 +13,7 @@ import AdminRegistrationDetailPage from '../pages/admin/AdminRegistrationDetailP
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
 import AdminSecurityVolunteersPage from '../pages/admin/AdminSecurityVolunteersPage'
 import SecurityLoginPage from '../pages/security/SecurityLoginPage'
+import SecurityDashboardPage from '../pages/security/SecurityDashboardPage'
 import SecurityScannerPage from '../pages/security/SecurityScannerPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function Router() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/check-status" element={<CheckStatusPage />} />
         <Route path="/security/login" element={<SecurityLoginPage />} />
+        <Route path="/security/dashboard" element={<SecurityDashboardPage />} />
         <Route path="/security/scanner" element={<SecurityScannerPage />} />
         <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />

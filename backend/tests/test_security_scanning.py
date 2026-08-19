@@ -34,11 +34,11 @@ async def _user(session, email: str, role_name: str) -> User:
     return user
 
 
-async def _fixture(session, *, status: str = RegistrationStatus.Approved, checked_in: bool = False, suffix: str = '001'):
-    event = Event(title='Security Event', slug=f'security-{datetime.now().timestamp()}', start_datetime=datetime.now(timezone.utc), end_datetime=datetime.now(timezone.utc), status='ongoing')
+async def _fixture(session, *, status: str = RegistrationStatus.Approved, checked_in: bool = False, suffix: str = '001', gender: str | None = None, event: Event | None = None):
+    event = event or Event(title='Security Event', slug=f'security-{datetime.now().timestamp()}', start_datetime=datetime.now(timezone.utc), end_datetime=datetime.now(timezone.utc), status='ongoing')
     session.add(event)
     await session.flush()
-    registration = Registration(event_id=event.id, first_name='Asha', last_name='Rai', department='Cybersecurity and Digital Forensics', academic_year='First Year', email=f'private-{suffix}@example.com', phone='9999999999', registration_number=f'PG26-SEC-{suffix}', status=status, checked_in=checked_in, checked_in_at=datetime.now(timezone.utc) if checked_in else None, notes='private admin note')
+    registration = Registration(event_id=event.id, first_name='Asha', last_name='Rai', department='Cybersecurity and Digital Forensics', academic_year='First Year', email=f'private-{suffix}@example.com', phone='9999999999', registration_number=f'PG26-SEC-{suffix}', gender=gender, status=status, checked_in=checked_in, checked_in_at=datetime.now(timezone.utc) if checked_in else None, notes='private admin note')
     session.add(registration)
     await session.flush()
     pass_obj = Pass(event_id=event.id, registration_id=registration.id, pass_number=f'PASS-SEC-{suffix}', status=PassStatus.Issued, checked_in_at=registration.checked_in_at)
@@ -78,6 +78,52 @@ async def test_security_role_can_preview_and_students_cannot(client):
     assert 'payment' not in allowed.text.lower()
     assert 'private admin note' not in allowed.text.lower()
     assert 'id' not in allowed.json()
+
+
+@pytest.mark.asyncio
+async def test_security_dashboard_authorization_and_statistics(client):
+    async with get_session() as session:
+        await _user(session, 'dashboard-volunteer@example.com', 'security_volunteer')
+        await _user(session, 'dashboard-student@example.com', 'student')
+        await _user(session, 'dashboard-admin@example.com', 'admin')
+        event, _male, male_pass, male_qr, gate = await _fixture(session, suffix='dash-male', gender='Male')
+        _female_event, _female, female_pass, female_qr, _ = await _fixture(session, suffix='dash-female', gender='female', event=event)
+        _other_event, _other, other_pass, other_qr, _ = await _fixture(session, suffix='dash-other', gender='nonbinary', event=event)
+        await _fixture(session, status=RegistrationStatus.Pending, suffix='dash-pending', gender='male', event=event)
+        await _fixture(session, status=RegistrationStatus.Rejected, suffix='dash-rejected', gender='female', event=event)
+        await session.commit()
+
+    volunteer_headers = {'Authorization': f'Bearer {await _token(client, "dashboard-volunteer@example.com") }'}
+    student_headers = {'Authorization': f'Bearer {await _token(client, "dashboard-student@example.com") }'}
+    admin_headers = {'Authorization': f'Bearer {await _token(client, "dashboard-admin@example.com") }'}
+    assert (await client.get('/api/v1/security/dashboard')).status_code == 401
+    assert (await client.get('/api/v1/security/dashboard', headers=student_headers)).status_code == 403
+    assert (await client.get('/api/v1/security/dashboard', headers=admin_headers)).status_code == 200
+
+    initial = await client.get('/api/v1/security/dashboard', headers=volunteer_headers)
+    assert initial.json()['total_checked_in'] == 0
+    assert initial.json()['approved_eligible'] == 3
+    assert set(initial.json()) == {'event_title', 'total_checked_in', 'male_checked_in', 'female_checked_in', 'other_checked_in', 'approved_eligible', 'remaining_to_check_in'}
+
+    for qr in (male_qr, female_qr, other_qr):
+        preview = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+        assert preview.json()['status'] == 'VALID_PASS'
+        checked = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+        assert checked.json()['status'] == 'CHECKED_IN'
+    duplicate = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': male_qr.qr_token, 'gate_id': gate.id})
+    assert duplicate.json()['status'] == 'ALREADY_CHECKED_IN'
+    failed = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': 'missing', 'gate_id': gate.id})
+    assert failed.json()['status'] == 'INVALID_QR'
+
+    updated = await client.get('/api/v1/security/dashboard', headers=volunteer_headers)
+    assert updated.json()['total_checked_in'] == 3
+    assert updated.json()['male_checked_in'] == 1
+    assert updated.json()['female_checked_in'] == 1
+    assert updated.json()['other_checked_in'] == 1
+    assert updated.json()['remaining_to_check_in'] == 0
+    assert all(field not in updated.text.lower() for field in ('email', 'phone', 'payment', 'private admin note'))
+    async with get_session() as session:
+        assert (await session.execute(select(func.count()).select_from(EntryLog).where(EntryLog.entry_status == 'success'))).scalar_one() == 3
 
 
 @pytest.mark.asyncio

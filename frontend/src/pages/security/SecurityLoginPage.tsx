@@ -22,7 +22,7 @@ export default function SecurityLoginPage() {
         setError('You do not have security scanner access.')
         return
       }
-      navigate('/security/scanner', { replace: true })
+      navigate('/security/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid credentials')
     } finally {

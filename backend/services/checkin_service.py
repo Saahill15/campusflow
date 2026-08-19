@@ -50,6 +50,61 @@ class CheckInService:
     async def validate_qr_token(self, qr_token: str) -> Optional[QRCode]:
         return await self.qr_repo.get_by_token(qr_token)
 
+    async def dashboard_statistics(self) -> dict:
+        now = datetime.now(timezone.utc)
+        event = (await self.session.execute(
+            select(Event)
+            .where(Event.is_active.is_(True), Event.status == 'ongoing')
+            .order_by(Event.start_datetime.desc())
+            .limit(1)
+        )).scalars().first()
+        if not event:
+            event = (await self.session.execute(
+                select(Event)
+                .where(
+                    Event.is_active.is_(True),
+                    Event.start_datetime <= now,
+                    Event.end_datetime >= now,
+                )
+                .order_by(Event.start_datetime.desc())
+                .limit(1)
+            )).scalars().first()
+        if not event:
+            return {
+                'event_title': None,
+                'total_checked_in': 0,
+                'male_checked_in': 0,
+                'female_checked_in': 0,
+                'other_checked_in': 0,
+                'approved_eligible': 0,
+                'remaining_to_check_in': 0,
+            }
+
+        successful_rows = (await self.session.execute(
+            select(EntryLog.pass_id, Registration.gender)
+            .join(Pass, Pass.id == EntryLog.pass_id)
+            .join(Registration, Registration.id == Pass.registration_id)
+            .where(EntryLog.event_id == event.id, EntryLog.entry_status == 'success')
+        )).all()
+        checked_in_by_pass = {pass_id: gender for pass_id, gender in successful_rows if pass_id}
+        genders = [str(gender or '').strip().lower() for gender in checked_in_by_pass.values()]
+        approved_eligible = (await self.session.execute(
+            select(func.count()).select_from(Registration).where(
+                Registration.event_id == event.id,
+                Registration.status == RegistrationStatus.Approved,
+            )
+        )).scalar_one()
+        total_checked_in = len(checked_in_by_pass)
+        return {
+            'event_title': event.title,
+            'total_checked_in': total_checked_in,
+            'male_checked_in': sum(gender == 'male' for gender in genders),
+            'female_checked_in': sum(gender == 'female' for gender in genders),
+            'other_checked_in': sum(gender not in {'male', 'female'} for gender in genders),
+            'approved_eligible': approved_eligible,
+            'remaining_to_check_in': max(approved_eligible - total_checked_in, 0),
+        }
+
     async def preview_scan(self, qr_token: str, gate_id: str) -> dict:
         context = await self._load_scan_context(qr_token, gate_id)
         if context['status'] != 'OK':
