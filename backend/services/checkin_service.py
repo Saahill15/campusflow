@@ -23,7 +23,7 @@ class CheckInService:
 
     Public methods:
       - validate_qr_token(qr_token)
-      - process_scan(qr_token, gate_id, scanner_id, device_identifier)
+    - process_scan(qr_token, gate_id, scanner_id, device_identifier)
       - mark_check_in(registration, pass_obj)
     """
 
@@ -105,13 +105,13 @@ class CheckInService:
             'remaining_to_check_in': max(approved_eligible - total_checked_in, 0),
         }
 
-    async def preview_scan(self, qr_token: str, gate_id: str) -> dict:
-        context = await self._load_scan_context(qr_token, gate_id)
+    async def preview_scan(self, qr_token: str) -> dict:
+        context = await self._load_scan_context(qr_token)
         if context['status'] != 'OK':
             return context
         return self._safe_preview(context, 'ALREADY_CHECKED_IN' if context['registration'].checked_in or context['pass_obj'].checked_in_at else 'VALID_PASS')
 
-    async def confirm_scan(self, qr_token: str, gate_id: str, scanner_id: Optional[int] = None, device_identifier: Optional[str] = None) -> dict:
+    async def confirm_scan(self, qr_token: str, scanner_id: Optional[int] = None, device_identifier: Optional[str] = None) -> dict:
         if not (await SystemSettingsService(self.session).get_settings()).checkin_enabled:
             return {'status': 'CHECKIN_DISABLED', 'message': 'Check-in is currently disabled.'}
 
@@ -123,7 +123,7 @@ class CheckInService:
         )
         locked_row = locked_rows.first()
         registration = locked_row[0] if locked_row else None
-        context = await self._load_scan_context(qr_token, gate_id)
+        context = await self._load_scan_context(qr_token)
         if context['status'] != 'OK':
             return context
         if registration and registration.id != context['registration'].id:
@@ -144,7 +144,7 @@ class CheckInService:
             event_id=context['event'].id,
             pass_id=pass_obj.id,
             qr_code_id=context['qr'].id,
-            gate_id=gate_id,
+            gate_id=None,
             scanned_by=scanner_id,
             entry_status='success',
             device_identifier=device_identifier,
@@ -162,13 +162,10 @@ class CheckInService:
         result['checked_in_at'] = now
         return result
 
-    async def _load_scan_context(self, qr_token: str, gate_id: str) -> dict:
+    async def _load_scan_context(self, qr_token: str) -> dict:
         if not (await SystemSettingsService(self.session).get_settings()).checkin_enabled:
             return {'status': 'CHECKIN_DISABLED', 'message': 'Check-in is currently disabled.'}
 
-        gate = await self.gate_repo.get_by_id(gate_id)
-        if not gate:
-            return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
         qr = await self.qr_repo.get_by_token(qr_token)
         if not qr:
             return {'status': 'INVALID_QR', 'message': 'Invalid QR.'}
@@ -182,7 +179,7 @@ class CheckInService:
         registration = await self.reg_repo.get_by_id(pass_obj.registration_id)
         if not registration or registration.status != RegistrationStatus.Approved:
             return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
-        event = await self.session.get(Event, gate.event_id)
+        event = await self.session.get(Event, pass_obj.event_id)
         if not event or event.id != registration.event_id:
             return {'status': 'ENTRY_NOT_ALLOWED', 'message': 'Entry is not allowed.'}
         event_settings = await self.settings_repo.get_by_event_id(event.id)

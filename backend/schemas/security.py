@@ -7,7 +7,6 @@ from pydantic import EmailStr, Field, ConfigDict
 
 class SecurityScanRequest(BaseModel):
     qr_token: str
-    gate_id: str
 
 
 class SecurityScanResponse(BaseModel):
@@ -22,11 +21,6 @@ class SecurityScanResponse(BaseModel):
     checked_in: bool = False
     checked_in_at: Optional[datetime] = None
     entry_log_id: Optional[str] = None
-
-
-class SecurityGateResponse(BaseModel):
-    id: str
-    name: str
 
 
 class SecurityDashboardResponse(BaseModel):

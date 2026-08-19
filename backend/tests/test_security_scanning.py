@@ -34,7 +34,7 @@ async def _user(session, email: str, role_name: str) -> User:
     return user
 
 
-async def _fixture(session, *, status: str = RegistrationStatus.Approved, checked_in: bool = False, suffix: str = '001', gender: str | None = None, event: Event | None = None):
+async def _fixture(session, *, status: str = RegistrationStatus.Approved, checked_in: bool = False, suffix: str = '001', gender: str | None = None, event: Event | None = None, include_gate: bool = True):
     event = event or Event(title='Security Event', slug=f'security-{datetime.now().timestamp()}', start_datetime=datetime.now(timezone.utc), end_datetime=datetime.now(timezone.utc), status='ongoing')
     session.add(event)
     await session.flush()
@@ -45,8 +45,10 @@ async def _fixture(session, *, status: str = RegistrationStatus.Approved, checke
     session.add(pass_obj)
     await session.flush()
     qr = QRCode(pass_id=pass_obj.id, qr_token=f'SEC-QR-{suffix}', status=QRStatus.Active)
-    gate = Gate(event_id=event.id, name='Main Gate')
-    session.add_all([qr, gate])
+    gate = Gate(event_id=event.id, name='Main Gate') if include_gate else None
+    session.add(qr)
+    if gate:
+        session.add(gate)
     await session.flush()
     return event, registration, pass_obj, qr, gate
 
@@ -61,16 +63,19 @@ async def test_security_role_can_preview_and_students_cannot(client):
     async with get_session() as session:
         await _user(session, 'volunteer@example.com', 'security_volunteer')
         await _user(session, 'student-scan@example.com', 'student')
-        _event, _registration, _pass, _qr, gate = await _fixture(session)
+        _event, _registration, _pass, _qr, _gate = await _fixture(session, include_gate=False)
         await session.commit()
 
     volunteer_headers = {'Authorization': f'Bearer {await _token(client, "volunteer@example.com") }'}
     student_headers = {'Authorization': f'Bearer {await _token(client, "student-scan@example.com") }'}
-    allowed = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': 'SEC-QR-001', 'gate_id': gate.id})
-    forbidden = await client.post('/api/v1/security/scan', headers=student_headers, json={'qr_token': 'SEC-QR-001', 'gate_id': gate.id})
-    unauthenticated = await client.post('/api/v1/security/scan', json={'qr_token': 'SEC-QR-001', 'gate_id': gate.id})
+    allowed = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': 'SEC-QR-001'})
+    forbidden = await client.post('/api/v1/security/scan', headers=student_headers, json={'qr_token': 'SEC-QR-001'})
+    unauthenticated = await client.post('/api/v1/security/scan', json={'qr_token': 'SEC-QR-001'})
     assert allowed.status_code == 200
     assert allowed.json()['status'] == 'VALID_PASS'
+    checked = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': 'SEC-QR-001'})
+    assert checked.status_code == 200
+    assert checked.json()['status'] == 'CHECKED_IN'
     assert forbidden.status_code == 403
     assert unauthenticated.status_code == 401
     assert 'email' not in allowed.text.lower()
@@ -78,6 +83,9 @@ async def test_security_role_can_preview_and_students_cannot(client):
     assert 'payment' not in allowed.text.lower()
     assert 'private admin note' not in allowed.text.lower()
     assert 'id' not in allowed.json()
+    async with get_session() as session:
+        entry_log = (await session.execute(select(EntryLog))).scalars().one()
+        assert entry_log.gate_id is None
 
 
 @pytest.mark.asyncio
@@ -106,13 +114,13 @@ async def test_security_dashboard_authorization_and_statistics(client):
     assert set(initial.json()) == {'event_title', 'total_checked_in', 'male_checked_in', 'female_checked_in', 'other_checked_in', 'approved_eligible', 'remaining_to_check_in'}
 
     for qr in (male_qr, female_qr, other_qr):
-        preview = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+        preview = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': qr.qr_token})
         assert preview.json()['status'] == 'VALID_PASS'
-        checked = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+        checked = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': qr.qr_token})
         assert checked.json()['status'] == 'CHECKED_IN'
-    duplicate = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': male_qr.qr_token, 'gate_id': gate.id})
+    duplicate = await client.post('/api/v1/security/check-in', headers=volunteer_headers, json={'qr_token': male_qr.qr_token})
     assert duplicate.json()['status'] == 'ALREADY_CHECKED_IN'
-    failed = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': 'missing', 'gate_id': gate.id})
+    failed = await client.post('/api/v1/security/scan', headers=volunteer_headers, json={'qr_token': 'missing'})
     assert failed.json()['status'] == 'INVALID_QR'
 
     updated = await client.get('/api/v1/security/dashboard', headers=volunteer_headers)
@@ -134,15 +142,15 @@ async def test_preview_is_non_mutating_and_explicit_checkin_reuses_entry_log(cli
         await session.commit()
 
     headers = {'Authorization': f'Bearer {await _token(client, "volunteer-check@example.com") }'}
-    preview = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+    preview = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': qr.qr_token})
     assert preview.json()['status'] == 'VALID_PASS'
     async with get_session() as session:
         saved = (await session.execute(select(Registration).where(Registration.id == registration.id))).scalars().one()
         assert saved.checked_in is False
         assert (await session.execute(select(func.count()).select_from(EntryLog))).scalar_one() == 0
 
-    checked = await client.post('/api/v1/security/check-in', headers=headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
-    duplicate = await client.post('/api/v1/security/check-in', headers=headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+    checked = await client.post('/api/v1/security/check-in', headers=headers, json={'qr_token': qr.qr_token})
+    duplicate = await client.post('/api/v1/security/check-in', headers=headers, json={'qr_token': qr.qr_token})
     assert checked.json()['status'] == 'CHECKED_IN'
     assert duplicate.json()['status'] == 'ALREADY_CHECKED_IN'
     async with get_session() as session:
@@ -160,7 +168,7 @@ async def test_security_scan_result_states_and_disabled_setting(client):
         _event, _registration, _pass, qr, gate = await _fixture(session)
         await session.commit()
     headers = {'Authorization': f'Bearer {await _token(client, "volunteer-states@example.com") }'}
-    invalid = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': 'missing', 'gate_id': gate.id})
+    invalid = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': 'missing'})
     assert invalid.json()['status'] == 'INVALID_QR'
 
     async with get_session() as session:
@@ -171,7 +179,7 @@ async def test_security_scan_result_states_and_disabled_setting(client):
         else:
             session.add(SystemSettings(id=1, checkin_enabled=False))
         await session.commit()
-    disabled = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': qr.qr_token, 'gate_id': gate.id})
+    disabled = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': qr.qr_token})
     assert disabled.json()['status'] == 'CHECKIN_DISABLED'
     assert rejected_event and rejected and rejected_pass and rejected_qr and rejected_gate
 
@@ -195,7 +203,7 @@ async def test_admin_can_access_scanner_without_security_role(client):
         _event, _registration, _pass, _qr, gate = await _fixture(session, suffix='003')
         await session.commit()
     headers = {'Authorization': f'Bearer {await _token(client, "scanner-admin@example.com") }'}
-    response = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': 'SEC-QR-003', 'gate_id': gate.id})
+    response = await client.post('/api/v1/security/scan', headers=headers, json={'qr_token': 'SEC-QR-003'})
     assert response.status_code == 200
     assert response.json()['status'] == 'VALID_PASS'
 
