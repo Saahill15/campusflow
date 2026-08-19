@@ -129,8 +129,12 @@ function PassPreview({ item, pass, qrToken }: { item: RegistrationDetail; pass: 
   )
 }
 
-export default function AdminRegistrationDetailPage() {
-  const { id } = useParams()
+type RegistrationDetailProps = { registrationId?: string; onClose?: () => void }
+
+export default function AdminRegistrationDetailPage({ registrationId, onClose }: RegistrationDetailProps = {}) {
+  const routeParams = useParams()
+  const id = registrationId || routeParams.id
+  const modalMode = Boolean(registrationId && onClose)
   const [item, setItem] = useState<RegistrationDetail | null>(null)
   const [passData, setPassData] = useState<PassData | null>(null)
   const [passError, setPassError] = useState('')
@@ -348,7 +352,7 @@ export default function AdminRegistrationDetailPage() {
     <div className="min-w-0 space-y-6 text-slate-100">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <Link to="/admin/registrations" className="text-sm text-cyan-300 hover:text-cyan-200">← Back to Registrations</Link>
+          {modalMode ? <button type="button" onClick={onClose} className="admin-button admin-button-ghost !px-0">← Back to registrations</button> : <Link to="/admin/registrations" className="text-sm text-cyan-300 hover:text-cyan-200">← Back to Registrations</Link>}
           <p className="mt-5 text-xs uppercase tracking-[0.3em] text-cyan-300">Registration Review</p>
           <h1 className="mt-2 break-words text-3xl font-semibold text-white">{fullName}</h1>
           <p className="mt-2 break-words text-sm text-slate-400">Registration #{formatValue(item.registration_number)} · ID {formatValue(item.id || id)}</p>
@@ -371,11 +375,10 @@ export default function AdminRegistrationDetailPage() {
               ['Gender', item.gender],
               ['Email', item.email],
               ['Contact Number', item.phone],
-              ['Emergency Contact', item.emergency_contact || 'Unavailable in current records'],
+              ['Emergency Contact', item.emergency_contact || '-'],
               ['Department', item.department],
               ['Academic Year', item.academic_year],
               ['Roll Number / SIMS ID', item.roll_number || item.sims_id],
-              ['Nearest / Local Station', item.local_station || 'Unavailable in current records'],
             ]} /></div>
           </section>
 

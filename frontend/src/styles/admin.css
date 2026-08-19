@@ -67,9 +67,15 @@
 .admin-status-tile span { display: block; margin-top: 3px; color: var(--admin-muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .admin-detail-actions { position: sticky; top: 92px; z-index: 10; border: 1px solid var(--admin-line); background: rgba(35,20,13,.94); padding: 14px; backdrop-filter: blur(18px); }
 .admin-filter-panel { z-index: 50; }
+.admin-review-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; overflow-y: auto; background: rgba(10,6,4,.76); padding: 24px; backdrop-filter: blur(12px); }
+.admin-review-modal { position: relative; width: min(90vw, 1180px); max-height: 92vh; overflow-y: auto; border: 1px solid rgba(211,166,84,.32); background: var(--admin-ink); box-shadow: 0 30px 100px rgba(0,0,0,.5); }
+.admin-review-modal > .min-w-0 { padding: clamp(22px, 4vw, 42px); }
+.admin-review-close { position: sticky; top: 16px; z-index: 5; float: right; display: grid; height: 44px; width: 44px; margin: 16px 16px 0 0; place-items: center; border: 1px solid var(--admin-line); background: rgba(22,14,10,.92); color: var(--admin-cream); font-size: 25px; line-height: 1; }
+.admin-review-close:hover { border-color: var(--admin-gold); color: var(--admin-gold); }
+.admin-review-modal .admin-detail-actions { position: static; }
 
 @media (max-width: 1100px) { .admin-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .admin-sidebar { transform: translateX(-100%); width: min(290px, 88vw); box-shadow: 18px 0 50px rgba(0,0,0,.35); } .admin-sidebar.open { transform: translateX(0); } .admin-main { margin-left: 0; } .admin-mobile-menu { display: inline-flex; min-height: 44px; min-width: 44px; align-items: center; justify-content: center; border: 1px solid var(--admin-line); color: var(--admin-cream); } .admin-page-header { align-items: flex-start; flex-direction: column; } .admin-page-action { width: 100%; } .admin-page-action > * { width: 100%; } .admin-content { padding: 22px 16px 36px; } .admin-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .admin-stat-card { padding: 14px; } .admin-stat-value { margin-top: 17px; font-size: 25px; } .admin-card-grid { grid-template-columns: 1fr; } .admin-status-strip { gap: 6px; } .admin-status-tile { padding: 10px 8px; } .admin-status-tile strong { font-size: 19px; } .admin-status-tile span { font-size: 9px; letter-spacing: .04em; } .admin-detail-actions { position: static; } .admin-filter-panel { position: fixed; inset: 0; overflow-y: auto; background: rgba(22,14,10,.98); padding: 86px 16px 24px; } }
+@media (max-width: 767px) { .admin-sidebar { transform: translateX(-100%); width: min(290px, 88vw); box-shadow: 18px 0 50px rgba(0,0,0,.35); } .admin-sidebar.open { transform: translateX(0); } .admin-main { margin-left: 0; } .admin-mobile-menu { display: inline-flex; min-height: 44px; min-width: 44px; align-items: center; justify-content: center; border: 1px solid var(--admin-line); color: var(--admin-cream); } .admin-page-header { align-items: flex-start; flex-direction: column; } .admin-page-action { width: 100%; } .admin-page-action > * { width: 100%; } .admin-content { padding: 22px 16px 36px; } .admin-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .admin-stat-card { padding: 14px; } .admin-stat-value { margin-top: 17px; font-size: 25px; } .admin-card-grid { grid-template-columns: 1fr; } .admin-status-strip { gap: 6px; } .admin-status-tile { padding: 10px 8px; } .admin-status-tile strong { font-size: 19px; } .admin-status-tile span { font-size: 9px; letter-spacing: .04em; } .admin-detail-actions { position: static; } .admin-filter-panel { position: fixed; inset: 0; overflow-y: auto; background: rgba(22,14,10,.98); padding: 86px 16px 24px; } .admin-review-overlay { align-items: flex-end; padding: 0; } .admin-review-modal { width: 100%; max-height: 96vh; border-bottom: 0; } .admin-review-modal > .min-w-0 { padding: 20px 16px 32px; } .admin-review-modal .grid { min-width: 0; } .admin-review-close { position: absolute; top: 12px; right: 12px; margin: 0; } }
 @media (max-width: 380px) { .admin-stat-grid { grid-template-columns: 1fr 1fr; } .admin-stat-label { font-size: 9px; letter-spacing: .06em; } }
 
 .admin-app [class~="bg-slate-900/80"], .admin-app [class~="bg-slate-900/90"] { background: linear-gradient(135deg, rgba(57,34,23,.8), rgba(30,18,12,.82)); border-color: var(--admin-line); }
@@ -80,3 +86,16 @@
 .admin-app [class~="bg-green-600"], .admin-app [class~="bg-green-700"] { background: rgba(141,200,160,.2); color: var(--admin-cream); }
 .admin-app [class~="bg-red-600"], .admin-app [class~="bg-red-700"] { background: rgba(228,155,147,.18); color: var(--admin-cream); }
 .admin-app input, .admin-app textarea, .admin-app select { border-color: rgba(211,166,84,.2); background: rgba(18,11,8,.68); color: var(--admin-cream); }
+.security-screen { min-height: 100vh; overflow-x: hidden; color: var(--admin-cream); background: radial-gradient(circle at 85% 0%, rgba(211,166,84,.12), transparent 28rem), radial-gradient(circle at 0% 100%, rgba(107,39,23,.25), transparent 30rem), var(--admin-ink); font-family: 'DM Sans', sans-serif; }
+.security-screen h1, .security-screen h2 { font-family: 'Space Grotesk', sans-serif; }
+.security-panel { border: 1px solid var(--admin-line); background: linear-gradient(135deg, rgba(57,34,23,.86), rgba(30,18,12,.9)); box-shadow: 0 24px 70px rgba(0,0,0,.22); }
+.security-screen input { border-color: rgba(211,166,84,.25); background: rgba(18,11,8,.72); color: var(--admin-cream); }
+.security-screen input:focus { border-color: var(--admin-gold); box-shadow: 0 0 0 3px rgba(211,166,84,.12); }
+.security-screen button { min-height: 44px; }
+.security-brand { color: var(--admin-cream); font-family: 'Space Grotesk', sans-serif; letter-spacing: .18em; }
+.security-eyebrow { color: var(--admin-gold); font-size: 10px; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; }
+.admin-toggle { position: relative; display: inline-flex; height: 30px; width: 54px; flex: 0 0 auto; align-items: center; border: 1px solid rgba(211,166,84,.3); border-radius: 999px; background: rgba(255,255,255,.08); padding: 3px; transition: .2s ease; }
+.admin-toggle.is-on { border-color: rgba(141,200,160,.5); background: rgba(141,200,160,.25); }
+.admin-toggle:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 3px; }
+.admin-toggle-thumb { height: 22px; width: 22px; border-radius: 999px; background: var(--admin-cream); transition: transform .2s ease; }
+.admin-toggle.is-on .admin-toggle-thumb { transform: translateX(22px); background: var(--admin-green); }
