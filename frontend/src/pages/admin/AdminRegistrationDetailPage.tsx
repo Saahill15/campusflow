@@ -149,6 +149,8 @@ export default function AdminRegistrationDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState<RegistrationEditForm | null>(null)
   const [editSaving, setEditSaving] = useState(false)
+  const [fixPreview, setFixPreview] = useState<{ current: string; corrected: string } | null>(null)
+  const [fixLoading, setFixLoading] = useState(false)
 
   const loadPass = async (registrationId: string) => {
     setPassLoading(true)
@@ -250,13 +252,45 @@ export default function AdminRegistrationDetailPage() {
     setActionError('')
     setActionMessage('')
     try {
-      const response = await api.post<{ email_sent: boolean; message?: string }>(`/admin/registrations/${id}/resend-approval-email`)
+      const endpoint = item?.status === 'approved' ? 'send-pass-email' : 'resend-confirmation-email'
+      const response = await api.post<{ email_sent: boolean; message?: string }>(`/admin/registrations/${id}/${endpoint}`)
       setConfirmResendOpen(false)
-      setActionMessage(response.data.email_sent ? 'Approval email resent with the existing pass attached.' : (response.data.message || 'Email was not sent.'))
+      setActionMessage(response.data.email_sent ? (item?.status === 'approved' ? 'Pass email sent with the existing pass attached.' : 'Confirmation email resent.') : (response.data.message || 'Email was not sent.'))
     } catch (err: any) {
       setActionError(err?.response?.data?.detail || err?.message || 'Unable to resend approval email')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const handleFixRequest = () => {
+    if (!item) return
+    const current = (item.roll_number || '').trim().toUpperCase()
+    if (/^[A-Z]{3}\d{5}$/.test(current)) {
+      setActionError('Roll number is already in the correct format.')
+      return
+    }
+    if (!/^[A-Z]{3}\d{4}$/.test(current)) {
+      setActionError('Roll number cannot be automatically corrected. Please use Edit.')
+      return
+    }
+    setActionError('')
+    setFixPreview({ current, corrected: `${current.slice(0, -2)}0${current.slice(-2)}` })
+  }
+
+  const handleFixConfirm = async () => {
+    if (!id || !fixPreview) return
+    setFixLoading(true)
+    setActionError('')
+    try {
+      await api.patch(`/admin/registrations/${id}/fix-roll-number`)
+      setFixPreview(null)
+      setActionMessage('Roll number corrected successfully.')
+      await loadRegistration()
+    } catch (err: any) {
+      setActionError(err?.response?.data?.detail || err?.message || 'Roll number cannot be automatically corrected. Please use Edit.')
+    } finally {
+      setFixLoading(false)
     }
   }
 
@@ -388,14 +422,18 @@ export default function AdminRegistrationDetailPage() {
 
           <section className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
             <h2 className="text-xl font-semibold text-white">Admin Actions</h2>
-            <div className="mt-5 grid gap-3"><Button variant="primary" onClick={beginEdit}>Edit</Button>{item.status === 'pending' ? <><Button variant="success" onClick={() => setConfirmApproveOpen(true)} isLoading={actionLoading}>Approve Registration</Button><Button variant="destructive" onClick={() => setRejectDialogOpen(true)} isLoading={actionLoading}>Reject Registration</Button></> : item.status === 'approved' ? <><Button variant="secondary" onClick={() => setPassPreviewOpen(true)} disabled={!passData}>View Pass</Button><Button variant="secondary" onClick={() => void handleDownload()} isLoading={actionLoading} disabled={!passData}>Download Pass</Button><Button variant="secondary" onClick={() => setConfirmResendOpen(true)} isLoading={actionLoading} disabled={!passData}>Resend Approval Email</Button></> : <p className="text-sm leading-6 text-slate-400">No status-changing actions are available for this registration.</p>}</div>
+            <div className="mt-5 grid gap-3"><Button variant="secondary" onClick={handleFixRequest}>Fix Roll Number</Button><Button variant="primary" onClick={beginEdit}>Edit</Button>{item.status === 'pending' ? <><Button variant="success" onClick={() => setConfirmApproveOpen(true)} isLoading={actionLoading}>Approve Registration</Button><Button variant="destructive" onClick={() => setRejectDialogOpen(true)} isLoading={actionLoading}>Reject Registration</Button><Button variant="secondary" onClick={() => setConfirmResendOpen(true)} isLoading={actionLoading}>Resend Confirmation Email</Button></> : item.status === 'approved' ? <><Button variant="secondary" onClick={() => setPassPreviewOpen(true)} disabled={!passData}>View Pass</Button><Button variant="secondary" onClick={() => void handleDownload()} isLoading={actionLoading} disabled={!passData}>Download Pass</Button><Button variant="secondary" onClick={() => setConfirmResendOpen(true)} isLoading={actionLoading} disabled={!passData}>Send Pass via Email</Button></> : <><p className="text-sm leading-6 text-slate-400">No status-changing actions are available for this registration.</p><Button variant="secondary" onClick={() => setConfirmResendOpen(true)} isLoading={actionLoading}>Resend Confirmation Email</Button></>}</div>
             <div className="mt-5 border-t border-white/10 pt-4"><p className="text-xs uppercase tracking-[0.18em] text-slate-500">Email history</p><p className="mt-2 text-sm leading-6 text-slate-400">Delivery history is not stored. Approved registrations can resend the existing pass email above.</p></div>
           </section>
         </aside>
       </div>
 
       <ConfirmDialog open={confirmApproveOpen} title="Approve this registration?" description="The existing approval flow will update the registration, create or reuse its pass and QR, and handle the approval notification." onConfirm={handleApprove} onCancel={() => setConfirmApproveOpen(false)} />
-      <ConfirmDialog open={confirmResendOpen} title="Resend approval email?" description="The existing pass and QR will be reused. No registration, pass, or QR data will be changed." onConfirm={handleResend} onCancel={() => setConfirmResendOpen(false)} />
+      <ConfirmDialog open={confirmResendOpen} title={item.status === 'approved' ? 'Send pass email?' : 'Resend confirmation email?'} description={item.status === 'approved' ? 'The existing pass and QR will be reused. No registration, pass, or QR data will be changed.' : 'The canonical registration confirmation email will be resent without changing registration data.'} onConfirm={handleResend} onCancel={() => setConfirmResendOpen(false)} />
+
+      <Modal open={!!fixPreview} onClose={() => { if (!fixLoading) setFixPreview(null) }} title="Fix Roll Number">
+        {fixPreview ? <div className="space-y-4"><p className="text-sm text-slate-300">Confirm the automatic correction for this known malformed roll-number pattern.</p><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><p className="text-xs uppercase tracking-[0.16em] text-slate-500">Current Roll Number</p><p className="mt-2 break-words font-mono text-white">{fixPreview.current}</p></div><div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-4"><p className="text-xs uppercase tracking-[0.16em] text-emerald-200">Corrected Roll Number</p><p className="mt-2 break-words font-mono text-white">{fixPreview.corrected}</p></div></div><div className="flex flex-wrap justify-end gap-3"><Button variant="secondary" onClick={() => setFixPreview(null)} disabled={fixLoading}>Cancel</Button><Button variant="primary" onClick={() => void handleFixConfirm()} isLoading={fixLoading}>Fix Roll Number</Button></div></div> : null}
+      </Modal>
 
       <Modal open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} title="Reject Registration">
         <p className="text-sm text-slate-400">Provide a reason for rejecting this registration. The existing rejection workflow will store and notify this reason.</p>

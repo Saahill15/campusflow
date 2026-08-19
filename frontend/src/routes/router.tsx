@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import AdminShell from '../components/admin/AdminShell'
 import PragyarambhLanding from '../pages/pragyarambh/PragyarambhLanding'
 import RegisterPage from '../pages/pragyarambh/RegisterPage'
+import CheckStatusPage from '../pages/pragyarambh/CheckStatusPage'
 import AdminLoginPage from '../pages/admin/AdminLoginPage'
 import AdminHomePage from '../pages/admin/AdminHomePage'
 import AdminRegistrationsPage from '../pages/admin/AdminRegistrationsPage'
@@ -24,6 +25,7 @@ export default function Router() {
       <Routes>
         <Route path="/" element={<PragyarambhLanding />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/check-status" element={<CheckStatusPage />} />
         <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route

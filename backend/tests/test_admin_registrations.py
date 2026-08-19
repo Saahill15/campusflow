@@ -12,7 +12,11 @@ from models.qr_code import QRCode, QRStatus
 from models.registration import PaymentStatus, Registration
 from services import registration_service
 from services.auth_service import hash_password
-from services.email_service import get_email_service
+from services.email_service import (
+    build_registration_approval_email,
+    build_registration_confirmation_email,
+    get_email_service,
+)
 
 
 class MockEmailService:
@@ -920,3 +924,156 @@ async def test_editing_does_not_change_pass_qr_email_or_registration_state(clien
         assert updated.checked_in_at == original[5].replace(tzinfo=None)
         assert len(passes) == 1 and passes[0].id == original[6]
         assert len(qrcodes) == 1 and qrcodes[0].id == original[7] and qrcodes[0].qr_token == original[8]
+
+
+@pytest.mark.asyncio
+async def test_admin_can_fix_only_known_malformed_roll_number(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2c2-admin@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000015', 'stage2c2.student@example.com')
+        registration.roll_number = 'FAI2401'
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2c2-admin@example.com')
+    response = await client.patch(f'/api/v1/admin/registrations/{registration.id}/fix-roll-number', headers={'Authorization': f'Bearer {token}'})
+    assert response.status_code == 200
+    assert response.json()['roll_number'] == 'FAI24001'
+
+    detail = await client.get(f'/api/v1/admin/registrations/{registration.id}', headers={'Authorization': f'Bearer {token}'})
+    assert detail.json()['registration_number'] == 'PG26-000015'
+    assert detail.json()['roll_number'] == 'FAI24001'
+
+
+@pytest.mark.asyncio
+async def test_roll_fix_leaves_correct_values_and_rejects_unsafe_values(client):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2c2-safe@example.com', 'StrongPass123', 'admin')
+        correct = await _create_registration(session, 'PG26-000016', 'stage2c2.correct@example.com')
+        correct.roll_number = 'FAI24001'
+        unsafe = await _create_registration(session, 'PG26-000017', 'stage2c2.unsafe@example.com')
+        unsafe.roll_number = 'FAI24RATETEST'
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2c2-safe@example.com')
+    unchanged = await client.patch(f'/api/v1/admin/registrations/{correct.id}/fix-roll-number', headers={'Authorization': f'Bearer {token}'})
+    rejected = await client.patch(f'/api/v1/admin/registrations/{unsafe.id}/fix-roll-number', headers={'Authorization': f'Bearer {token}'})
+    assert unchanged.status_code == 200
+    assert unchanged.json()['changed'] is False
+    assert unchanged.json()['message'] == 'Roll number is already in the correct format.'
+    assert rejected.status_code == 422
+    assert rejected.json()['detail'] == 'Roll number cannot be automatically corrected. Please use Edit.'
+
+
+@pytest.mark.asyncio
+async def test_roll_fix_requires_admin_and_preserves_pass_qr_state(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2c2-student@example.com', 'StrongPass123', 'student')
+        admin = await _create_user_with_role(session, 'stage2c2-side-effects@example.com', 'StrongPass123', 'admin')
+        registration = await _create_registration(session, 'PG26-000018', 'stage2c2.sideeffects@example.com', status='approved')
+        registration.roll_number = 'FAI2412'
+        registration.approved_by = admin.id
+        registration.checked_in = True
+        pass_obj, qr = await _create_pass_and_qr(session, registration)
+        await session.commit()
+
+    student_token = await _get_admin_token(client, 'stage2c2-student@example.com')
+    forbidden = await client.patch(f'/api/v1/admin/registrations/{registration.id}/fix-roll-number', headers={'Authorization': f'Bearer {student_token}'})
+    assert forbidden.status_code == 403
+
+    admin_token = await _get_admin_token(client, 'stage2c2-side-effects@example.com')
+    response = await client.patch(f'/api/v1/admin/registrations/{registration.id}/fix-roll-number', headers={'Authorization': f'Bearer {admin_token}'})
+    assert response.status_code == 200
+    assert response.json()['roll_number'] == 'FAI24012'
+    assert email_service_override.calls == []
+
+    async with get_session() as session:
+        updated = (await session.execute(select(Registration).where(Registration.id == registration.id))).scalars().one()
+        passes = (await session.execute(select(Pass).where(Pass.registration_id == registration.id))).scalars().all()
+        qrcodes = (await session.execute(select(QRCode).where(QRCode.pass_id == pass_obj.id))).scalars().all()
+        assert updated.registration_number == 'PG26-000018'
+        assert updated.status == 'approved'
+        assert updated.checked_in is True
+        assert len(passes) == 1 and passes[0].id == pass_obj.id
+        assert len(qrcodes) == 1 and qrcodes[0].id == qr.id
+
+
+@pytest.mark.asyncio
+async def test_admin_email_actions_reuse_canonical_templates_and_existing_pass(client, email_service_override):
+    async with get_session() as session:
+        await _create_user_with_role(session, 'stage2c3-admin@example.com', 'StrongPass123', 'admin')
+        pending = await _create_registration(session, 'PG26-000019', 'stage2c3.pending@example.com')
+        approved = await _create_registration(session, 'PG26-000020', 'stage2c3.approved@example.com', status='approved')
+        pass_obj, qr = await _create_pass_and_qr(session, approved)
+        await session.commit()
+
+    token = await _get_admin_token(client, 'stage2c3-admin@example.com')
+    confirmation = await client.post(f'/api/v1/admin/registrations/{pending.id}/resend-confirmation-email', headers={'Authorization': f'Bearer {token}'})
+    assert confirmation.status_code == 200
+    confirmation_subject, confirmation_body = build_registration_confirmation_email(pending.registration_number)
+    assert email_service_override.calls[-1]['subject'] == confirmation_subject
+    assert email_service_override.calls[-1]['body'] == confirmation_body
+
+    sent = await client.post(f'/api/v1/admin/registrations/{approved.id}/send-pass-email', headers={'Authorization': f'Bearer {token}'})
+    assert sent.status_code == 200
+    pass_subject, pass_body = build_registration_approval_email(approved.registration_number, pass_obj.pass_number)
+    assert email_service_override.calls[-1]['subject'] == pass_subject
+    assert email_service_override.calls[-1]['body'] == pass_body
+    assert email_service_override.calls[-1]['attachments'][0][0] == 'Pragyarambh_Pass.png'
+    assert email_service_override.calls[-1]['attachments'][0][1]
+    assert sent.json()['pass_number'] == pass_obj.pass_number
+    assert (await client.get(f'/api/v1/admin/registrations/{approved.id}/pass', headers={'Authorization': f'Bearer {token}'})).json()['qr']['qr_token'] == qr.qr_token
+
+
+@pytest.mark.asyncio
+async def test_public_registration_status_is_privacy_safe_and_reuses_email_actions(client, email_service_override):
+    from api.registration import status_limiter
+    status_limiter.requests.clear()
+    async with get_session() as session:
+        pending = await _create_registration(session, 'PG26-000021', 'stage2d.pending@example.com')
+        approved = await _create_registration(session, 'PG26-000022', 'stage2d.approved@example.com', status='approved')
+        pass_obj, _qr = await _create_pass_and_qr(session, approved)
+        rejected = await _create_registration(session, 'PG26-000023', 'stage2d.rejected@example.com', status='rejected')
+        rejected.rejected_reason = 'Internal reason'
+        await session.commit()
+
+    pending_response = await client.post('/api/v1/registration/status', json={'email': pending.email})
+    approved_response = await client.post('/api/v1/registration/status', json={'email': approved.email})
+    rejected_response = await client.post('/api/v1/registration/status', json={'email': rejected.email})
+    unknown_response = await client.post('/api/v1/registration/status', json={'email': 'unknown.stage2d@example.com'})
+    assert pending_response.json()['status'] == 'pending'
+    assert approved_response.json()['status'] == 'approved'
+    assert rejected_response.json()['status'] == 'rejected'
+    assert unknown_response.json()['found'] is False
+    for response in (pending_response, approved_response, rejected_response, unknown_response):
+        assert 'payment' not in response.text.lower()
+        assert 'qr' not in response.text.lower()
+        assert 'internal reason' not in response.text.lower()
+        assert 'id' not in response.json()
+
+    confirmation = await client.post('/api/v1/registration/status/resend-confirmation', json={'email': pending.email})
+    assert confirmation.status_code == 200
+    confirmation_subject, confirmation_body = build_registration_confirmation_email(pending.registration_number)
+    assert email_service_override.calls[-1]['subject'] == confirmation_subject
+    assert email_service_override.calls[-1]['body'] == confirmation_body
+
+    pass_response = await client.post('/api/v1/registration/status/resend-pass', json={'email': approved.email})
+    assert pass_response.status_code == 200
+    pass_subject, pass_body = build_registration_approval_email(approved.registration_number, pass_obj.pass_number)
+    assert email_service_override.calls[-1]['subject'] == pass_subject
+    assert email_service_override.calls[-1]['body'] == pass_body
+    assert email_service_override.calls[-1]['attachments'][0][0] == 'Pragyarambh_Pass.png'
+
+
+@pytest.mark.asyncio
+async def test_public_email_actions_handle_delivery_failure(client, email_service_override):
+    from api.registration import status_limiter
+    status_limiter.requests.clear()
+    async with get_session() as session:
+        registration = await _create_registration(session, 'PG26-000024', 'stage2d.failure@example.com')
+        await session.commit()
+
+    email_service_override.should_fail = True
+    response = await client.post('/api/v1/registration/status/resend-confirmation', json={'email': registration.email})
+    assert response.status_code == 200
+    assert response.json()['email_sent'] is False
+    assert 'could not be delivered' in response.json()['message'].lower()

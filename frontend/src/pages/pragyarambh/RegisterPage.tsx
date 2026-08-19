@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import PragyarambhRegistrationCard from '../../components/pragyarambh/PragyarambhRegistrationCard'
 
 export default function RegisterPage() {
@@ -22,6 +22,7 @@ export default function RegisterPage() {
             <ChevronLeft size={16} />
             Back
           </button>
+          <Link to="/check-status" className="ml-5 text-xs font-black uppercase tracking-[0.15em] text-[#D4C5AC] transition hover:text-[#CC9E4C]">Check Status</Link>
         </div>
       </header>
 

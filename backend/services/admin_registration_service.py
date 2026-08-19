@@ -220,6 +220,27 @@ class AdminRegistrationService:
         )
         return (await self.session.execute(query)).scalars().first()
 
+    async def fix_roll_number(self, registration_id: str) -> tuple[Registration, str, str, bool]:
+        registration = await self.get_registration(registration_id)
+        if not registration:
+            raise ValueError('Registration not found')
+
+        current = (registration.roll_number or '').strip().upper()
+        if re.fullmatch(r'[A-Z]{3}\d{5}', current):
+            return registration, current, current, False
+        if not re.fullmatch(r'[A-Z]{3}\d{4}', current):
+            raise ValueError('Roll number cannot be automatically corrected. Please use Edit.')
+
+        corrected = f'{current[:-2]}0{current[-2:]}'
+        if await self._find_duplicate(registration, 'roll_number', corrected):
+            raise ValueError('The corrected roll number is already assigned to another registration.')
+
+        registration.roll_number = corrected
+        self.session.add(registration)
+        await self.session.commit()
+        await self.session.refresh(registration)
+        return registration, current, corrected, True
+
     async def get_dashboard_summary(self, recent_limit: int = 6) -> AdminDashboardResponse:
         base_filter = Registration.deleted_at.is_(None)
 

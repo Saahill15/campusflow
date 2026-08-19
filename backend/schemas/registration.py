@@ -112,3 +112,20 @@ class RegistrationSubmissionResponse(BaseModel):
     email: str
     message: str
     confirmation_email_sent: bool = True
+
+
+class PublicRegistrationStatusRequest(BaseModel):
+    email: str
+
+
+class PublicRegistrationStatusResponse(BaseModel):
+    found: bool
+    status: Optional[str] = None
+    registration_number: Optional[str] = None
+    message: str
+    email_action_available: bool = False
+
+
+class PublicEmailActionResponse(BaseModel):
+    email_sent: bool
+    message: str

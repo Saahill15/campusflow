@@ -15,9 +15,17 @@ from dependencies.database import get_db
 import models.domain  # noqa: F401 - ensure related mappers are registered before Event queries
 from models.event import Event, EventStatus
 from models.registration import Registration, RegistrationStatus
-from schemas.registration import RegistrationCreate, RegistrationSubmissionResponse
-from services.email_service import build_registration_confirmation_email, get_email_service
+from schemas.registration import (
+    PublicEmailActionResponse,
+    PublicRegistrationStatusRequest,
+    PublicRegistrationStatusResponse,
+    RegistrationCreate,
+    RegistrationSubmissionResponse,
+)
+from services.email_service import get_email_service
 from services.registration_service import RegistrationService
+from services.registration_email_service import send_confirmation_email, send_existing_pass_email
+from services.pass_service import PassService
 from middleware.rate_limiter import registration_limiter
 
 router = APIRouter()
@@ -33,6 +41,7 @@ _DUPLICATE_STATUSES = [
     RegistrationStatus.Cancelled,
     RegistrationStatus.CheckedIn,
 ]
+status_limiter = registration_limiter.__class__(max_requests=5, window_seconds=3600)
 
 
 def _validate_payment_proof_bytes(file_name: str | None, file_content: bytes, declared_content_type: str | None) -> str:
@@ -345,12 +354,8 @@ async def create_registration(
     response_message = 'Registration submitted successfully.'
 
     if email_enabled:
-        subject, body = build_registration_confirmation_email(registration.registration_number)
-        try:
-            await email_service.send_email(registration.email, subject, body)
-            confirmation_email_sent = True
-        except Exception:
-            confirmation_email_sent = False
+        confirmation_email_sent, _message = await send_confirmation_email(registration, email_service)
+        if not confirmation_email_sent:
             response_message = 'Registration submitted successfully. Confirmation email could not be delivered at the moment.'
             logger.exception('Registration confirmation email delivery failed')
     else:
@@ -448,12 +453,8 @@ async def create_registration_with_file_upload(
     response_message = 'Registration submitted successfully.'
 
     if email_enabled:
-        subject, body = build_registration_confirmation_email(registration.registration_number)
-        try:
-            await email_service.send_email(registration.email, subject, body)
-            confirmation_email_sent = True
-        except Exception:
-            confirmation_email_sent = False
+        confirmation_email_sent, _message = await send_confirmation_email(registration, email_service)
+        if not confirmation_email_sent:
             response_message = 'Registration submitted successfully. Confirmation email could not be delivered at the moment.'
             logger.exception('Registration confirmation email delivery failed')
     else:
@@ -466,4 +467,89 @@ async def create_registration_with_file_upload(
         message=response_message,
         confirmation_email_sent=confirmation_email_sent,
     )
+
+
+def _normalize_status_email(email: str) -> str:
+    normalized = email.strip().lower()
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', normalized):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail='Please enter a valid email address.')
+    return normalized
+
+
+async def _find_public_registration(email: str, db: AsyncSession) -> Registration | None:
+    result = await db.execute(
+        select(Registration)
+        .where(func.lower(func.trim(Registration.email)) == email)
+        .order_by(Registration.created_at.desc(), Registration.id.desc())
+    )
+    return result.scalars().first()
+
+
+@router.post('/registration/status', response_model=PublicRegistrationStatusResponse)
+async def registration_status(
+    payload: PublicRegistrationStatusRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    email = _normalize_status_email(payload.email)
+    if not status_limiter.is_allowed(f'{request.client.host if request.client else "unknown"}:{email}'):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail='Too many status requests. Please try again later.')
+
+    registration = await _find_public_registration(email, db)
+    if not registration:
+        return PublicRegistrationStatusResponse(
+            found=False,
+            message='If a registration exists for this email, its status is available here.',
+        )
+
+    if registration.status == RegistrationStatus.Approved:
+        message = 'Your registration has been approved. Please check your email for your entry pass.'
+    elif registration.status == RegistrationStatus.Rejected:
+        message = 'Your registration was not approved. Please contact the event administration team for assistance.'
+    else:
+        message = 'Your registration has been received and is currently under review.'
+    return PublicRegistrationStatusResponse(
+        found=True,
+        status=registration.status,
+        registration_number=registration.registration_number,
+        message=message,
+        email_action_available=True,
+    )
+
+
+@router.post('/registration/status/resend-confirmation', response_model=PublicEmailActionResponse)
+async def public_resend_confirmation(
+    payload: PublicRegistrationStatusRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    email_service=Depends(get_email_service),
+):
+    email = _normalize_status_email(payload.email)
+    if not status_limiter.is_allowed(f'confirmation:{request.client.host if request.client else "unknown"}:{email}'):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail='Too many email requests. Please try again later.')
+    registration = await _find_public_registration(email, db)
+    if not registration or registration.status == RegistrationStatus.Approved:
+        return PublicEmailActionResponse(email_sent=False, message='If a registration is eligible, a confirmation email will be sent.')
+    sent, message = await send_confirmation_email(registration, email_service)
+    return PublicEmailActionResponse(email_sent=sent, message=message or 'Confirmation email sent successfully.')
+
+
+@router.post('/registration/status/resend-pass', response_model=PublicEmailActionResponse)
+async def public_resend_pass(
+    payload: PublicRegistrationStatusRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    email_service=Depends(get_email_service),
+):
+    email = _normalize_status_email(payload.email)
+    if not status_limiter.is_allowed(f'pass:{request.client.host if request.client else "unknown"}:{email}'):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail='Too many email requests. Please try again later.')
+    registration = await _find_public_registration(email, db)
+    if not registration or registration.status != RegistrationStatus.Approved:
+        return PublicEmailActionResponse(email_sent=False, message='If an approved registration exists, its pass email will be sent.')
+    pass_obj = await PassService(db).get_by_registration(registration.id)
+    if not pass_obj:
+        return PublicEmailActionResponse(email_sent=False, message='The pass is not currently available. Please contact the event administration team.')
+    sent, message = await send_existing_pass_email(db, registration, pass_obj, email_service)
+    return PublicEmailActionResponse(email_sent=sent, message=message or 'Pass email sent successfully.')
 

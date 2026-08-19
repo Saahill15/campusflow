@@ -58,6 +58,21 @@ class AdminRegistrationUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
+class AdminRollNumberFixResponse(BaseModel):
+    registration_number: Optional[str] = None
+    previous_roll_number: Optional[str] = None
+    roll_number: Optional[str] = None
+    changed: bool
+    message: str
+
+
+class AdminEmailActionResponse(BaseModel):
+    registration_number: Optional[str] = None
+    pass_number: Optional[str] = None
+    email_sent: bool
+    message: str
+
+
 class AdminRegistrationFilterOptions(BaseModel):
     departments: list[str] = []
     academic_years: list[str] = []
