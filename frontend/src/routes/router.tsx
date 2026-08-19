@@ -12,6 +12,7 @@ import AdminRegistrationsPage from '../pages/admin/AdminRegistrationsPage'
 import AdminRegistrationDetailPage from '../pages/admin/AdminRegistrationDetailPage'
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
 import AdminSecurityVolunteersPage from '../pages/admin/AdminSecurityVolunteersPage'
+import AdminCheckinOverviewPage from '../pages/admin/AdminCheckinOverviewPage'
 import SecurityLoginPage from '../pages/security/SecurityLoginPage'
 import SecurityDashboardPage from '../pages/security/SecurityDashboardPage'
 import SecurityScannerPage from '../pages/security/SecurityScannerPage'
@@ -49,6 +50,7 @@ export default function Router() {
           <Route path="registrations/:id" element={<AdminRegistrationDetailPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="security-volunteers" element={<AdminSecurityVolunteersPage />} />
+          <Route path="check-in" element={<AdminCheckinOverviewPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
