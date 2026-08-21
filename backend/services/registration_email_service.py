@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +13,9 @@ from services.email_service import (
 )
 from services.pdf_service import generate_pass_png_bytes
 from services.qr_service import QRCodeService
+
+
+logger = logging.getLogger(__name__)
 
 
 async def send_confirmation_email(registration: Registration, email_service, db: AsyncSession) -> tuple[bool, str | None]:
@@ -72,5 +77,12 @@ async def send_existing_pass_email(
         )
         await email_service.send_email(registration.email, subject, body, attachments=attachments)
     except Exception:
+        logger.exception(
+            'Failed to send approval pass email',
+            extra={
+                'registration_id': str(registration.id),
+                'recipient': registration.email,
+            },
+        )
         return False, 'Pass email could not be delivered.'
     return True, None
