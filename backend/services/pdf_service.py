@@ -11,6 +11,19 @@ except Exception:
     QR_LIB_AVAILABLE = False
 
 
+def _load_pass_number_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    font_candidates = (
+        Path(__file__).resolve().parents[1] / 'assets' / 'DejaVuSans-Bold.ttf',
+        Path('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+        Path('/usr/local/share/fonts/DejaVuSans-Bold.ttf'),
+        Path('/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf'),
+    )
+    for font_path in font_candidates:
+        if font_path.is_file():
+            return ImageFont.truetype(str(font_path), size)
+    return ImageFont.load_default(size=size)
+
+
 def generate_pass_png_bytes(
     registration_number: str,
     pass_number: str,
@@ -59,12 +72,9 @@ def generate_pass_png_bytes(
     qr_y = qr_inner['y'] + (qr_inner['height'] - qr_size) // 2
     image.paste(qr_image, (qr_x, qr_y))
 
-    font_path = Path('C:/Windows/Fonts/arialbd.ttf')
-    if not font_path.is_file():
-        raise FileNotFoundError(f'Pass font not found: {font_path}')
     font_size = 42
     while font_size > 12:
-        font = ImageFont.truetype(str(font_path), font_size)
+        font = _load_pass_number_font(font_size)
         bounds = draw.textbbox((0, 0), pass_number, font=font)
         if bounds[2] - bounds[0] <= pass_number_placeholder['width'] - 48 and bounds[3] - bounds[1] <= pass_number_placeholder['height'] - 24:
             break
