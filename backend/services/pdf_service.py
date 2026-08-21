@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
@@ -19,68 +20,60 @@ def generate_pass_png_bytes(
     academic_year: str = '',
     qr_token: Optional[str] = None,
 ) -> bytes:
-    # Portrait pass, phone-friendly
-    width = 1200
-    height = 1800
-    background_color = 'white'
-    text_color = 'black'
-    padding = 60
+    """Insert the live QR and pass number into the master pass template."""
+    if not qr_token:
+        raise ValueError('A QR token is required to generate an entry pass.')
+    if not QR_LIB_AVAILABLE:
+        raise RuntimeError('The qrcode package is required to generate an entry pass.')
 
-    image = Image.new('RGB', (width, height), background_color)
+    template_path = Path(__file__).resolve().parents[1] / 'assets' / 'pass-header.png'
+    if not template_path.is_file():
+        raise FileNotFoundError(f'Approved pass artwork not found: {template_path}')
+
+    image = Image.open(template_path).convert('RGB').copy()
+    width, height = image.size
     draw = ImageDraw.Draw(image)
-    try:
-        font_large = ImageFont.truetype('DejaVuSans-Bold.ttf', 48)
-        font_med = ImageFont.truetype('DejaVuSans.ttf', 36)
-        font_small = ImageFont.truetype('DejaVuSans.ttf', 28)
-    except Exception:
-        font_large = ImageFont.load_default()
-        font_med = ImageFont.load_default()
-        font_small = ImageFont.load_default()
 
-    # Header / branding
-    draw.text((padding, padding), 'Pragyarambh', font=font_large, fill=text_color)
-    draw.text((padding, padding + 70), event_title, font=font_med, fill=text_color)
+    qr_placeholder = {'x': 326, 'y': 663, 'width': 464, 'height': 424}
+    pass_number_placeholder = {'x': 230, 'y': 1166, 'width': 663, 'height': 101}
 
-    # Main attendee block
-    y = padding + 160
-    draw.text((padding, y), f'Name: {attendee_name}', font=font_med, fill=text_color)
-    y += 60
-    draw.text((padding, y), f'Registration No: {registration_number}', font=font_med, fill=text_color)
-    y += 50
-    draw.text((padding, y), f'Pass No: {pass_number}', font=font_med, fill=text_color)
-    y += 50
-    if department:
-        draw.text((padding, y), f'Department: {department}', font=font_small, fill=text_color)
-        y += 40
-    if academic_year:
-        draw.text((padding, y), f'Academic Year: {academic_year}', font=font_small, fill=text_color)
-        y += 40
+    qr_inner = {'x': 329, 'y': 666, 'width': 458, 'height': 418}
+    draw.rounded_rectangle(
+        (
+            qr_inner['x'],
+            qr_inner['y'],
+            qr_inner['x'] + qr_inner['width'],
+            qr_inner['y'] + qr_inner['height'],
+        ),
+        radius=30,
+        fill='#F6EEDB',
+    )
 
-    # Footer note
-    footer_y = height - padding - 120
-    draw.text((padding, footer_y), 'Please present this pass at the event entrance.', font=font_small, fill=text_color)
+    qr_size = min(qr_inner['width'], qr_inner['height']) - 28
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=16, border=4)
+    qr.add_data(qr_token)
+    qr.make(fit=True)
+    qr_image = qr.make_image(fill_color='black', back_color='#F6EEDB').convert('RGB')
+    qr_image = qr_image.resize((qr_size, qr_size), Image.Resampling.NEAREST)
+    qr_x = qr_inner['x'] + (qr_inner['width'] - qr_size) // 2
+    qr_y = qr_inner['y'] + (qr_inner['height'] - qr_size) // 2
+    image.paste(qr_image, (qr_x, qr_y))
 
-    # QR placement
-    if qr_token:
-        try:
-            if QR_LIB_AVAILABLE:
-                qr_img = qrcode.make(qr_token)
-                # ensure QR is square and sized appropriately
-                qr_size = 520
-                qr_img = qr_img.resize((qr_size, qr_size))
-                qr_x = width - padding - qr_size
-                qr_y = padding + 200
-                image.paste(qr_img, (qr_x, qr_y))
-            else:
-                # Fallback: draw token text in QR area if qrcode lib missing
-                qr_box_x = width - padding - 520
-                qr_box_y = padding + 200
-                draw.rectangle([qr_box_x, qr_box_y, qr_box_x + 520, qr_box_y + 520], outline=text_color)
-                draw.text((qr_box_x + 20, qr_box_y + 20), qr_token, font=font_small, fill=text_color)
-        except Exception:
-            # don't raise; caller will handle missing image/attachment
-            raise
+    font_path = Path('C:/Windows/Fonts/arialbd.ttf')
+    if not font_path.is_file():
+        raise FileNotFoundError(f'Pass font not found: {font_path}')
+    font_size = 42
+    while font_size > 12:
+        font = ImageFont.truetype(str(font_path), font_size)
+        bounds = draw.textbbox((0, 0), pass_number, font=font)
+        if bounds[2] - bounds[0] <= pass_number_placeholder['width'] - 48 and bounds[3] - bounds[1] <= pass_number_placeholder['height'] - 24:
+            break
+        font_size -= 1
+    bounds = draw.textbbox((0, 0), pass_number, font=font)
+    text_x = pass_number_placeholder['x'] + (pass_number_placeholder['width'] - (bounds[2] - bounds[0])) // 2
+    text_y = pass_number_placeholder['y'] + (pass_number_placeholder['height'] - (bounds[3] - bounds[1])) // 2 - bounds[1]
+    draw.text((text_x, text_y), pass_number, font=font, fill='#F6EEDB')
 
     buffer = BytesIO()
-    image.save(buffer, format='PNG', optimize=True)
+    image.save(buffer, format='PNG', optimize=False)
     return buffer.getvalue()

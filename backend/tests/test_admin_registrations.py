@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
+from io import BytesIO
 
 import pytest
+from PIL import Image
+from pyzbar.pyzbar import decode
 from sqlalchemy import select
 
 from app.main import app
@@ -398,6 +401,10 @@ async def test_admin_approval_sends_notification_email(client, email_service_ove
     assert filename.endswith('.png')
     assert content_type == 'image/png'
     assert isinstance(content, (bytes, bytearray))
+    with Image.open(BytesIO(content)) as pass_image:
+        assert pass_image.size == (1122, 1402)
+        decoded = [item.data.decode('utf-8') for item in decode(pass_image)]
+        assert len(decoded) == 1
 
 
 @pytest.mark.asyncio

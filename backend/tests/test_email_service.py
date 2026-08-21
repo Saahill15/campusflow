@@ -1,8 +1,10 @@
 import json
 import logging
+from io import BytesIO
 
 import httpx
 import pytest
+from PIL import Image
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from services.email_service import (
@@ -13,6 +15,7 @@ from services.email_service import (
     build_registration_rejection_email,
     get_email_service,
 )
+from services.pdf_service import generate_pass_png_bytes
 
 
 def test_registration_email_templates_render_branded_html():
@@ -31,6 +34,21 @@ def test_registration_email_templates_render_branded_html():
     assert 'Pragyarambh 3.0' in rejection_subject
     assert '<html' in rejection_body.lower()
     assert 'Registration Rejected' in rejection_body
+
+
+def test_generate_pass_png_bytes_uses_master_template():
+    png_bytes = generate_pass_png_bytes(
+        registration_number='PG26-000001',
+        pass_number='PG26-TESTPASS001',
+        attendee_name='Aarav Sharma',
+        event_title='Pragyarambh 3.0',
+        department='Data Science',
+        academic_year='Second Year',
+        qr_token='fictional-qr-token-123',
+    )
+
+    with Image.open(BytesIO(png_bytes)) as img:
+        assert img.size == (1122, 1402)
 
 
 @pytest.mark.asyncio
