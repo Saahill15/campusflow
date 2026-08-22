@@ -125,6 +125,7 @@ export default function PragyarambhLanding() {
       {/* Hero Section */}
       <section className="relative min-h-screen overflow-hidden">
         <div className="absolute inset-0">
+          {/*
           <video
             ref={videoRef}
             className="absolute inset-0 h-full w-full object-cover"
@@ -137,6 +138,7 @@ export default function PragyarambhLanding() {
           >
             <source src="/video.mp4" type="video/mp4" />
           </video>
+          */}
           {/* Elegant dark overlay with subtle color */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#1A120D]/70 via-[#1A120D]/80 to-[#1A120D]/90" />
           <div className="absolute inset-0 bg-radial-gradient(circle at top-right, [#CC9E4C]/5, transparent 50%)" />
